@@ -1,5 +1,4 @@
 import { Tile } from './tile';
-import { GameEvent } from './event';
 
 export interface PlayerStart {
   x: number;
@@ -25,8 +24,6 @@ export interface Floor {
   playerStart: PlayerStart;
   tiles: Tile[];
   stairs: StairsPosition;
-  globalEvents: GameEvent[];
-  customEvents: GameEvent[];
 }
 
 export interface MapData {

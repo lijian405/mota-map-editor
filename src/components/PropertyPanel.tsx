@@ -1,8 +1,15 @@
-import { Form, InputNumber, Input, Select, Divider, Space, Button, Badge } from 'antd';
-import { DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Form, InputNumber, Input, Select, Divider, Space, Button } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { updateTile, removeTile, setSelectedTileId, updatePlayerStart, updateStairs, updateMapSize } from '../store/mapSlice';
-import { setTileEventPanelOpen, setEditingTileId } from '../store/editorSlice';
+import {
+  updateTile,
+  removeTile,
+  setSelectedTileId,
+  setSelectedGrid,
+  updatePlayerStart,
+  updateStairs,
+  updateMapSize
+} from '../store/mapSlice';
 import { presetTiles, tileCategories } from '../data/presetTiles';
 import { tileKindFromPresetTileType } from '../utils/mapUtils';
 import type { Floor, Tile, PresetTile, TileType } from '../types';
@@ -79,6 +86,7 @@ const PropertyPanel: React.FC = () => {
   const dispatch = useAppDispatch();
   const mapData = useAppSelector(state => state.map.mapData);
   const selectedTileId = useAppSelector(state => state.map.selectedTileId);
+  const selectedGrid = useAppSelector(state => state.map.selectedGrid);
   const currentFloor = mapData.floors.find((f: Floor) => f.floorId === mapData.currentFloor);
   const selectedTile = currentFloor?.tiles.find((t: Tile) => t.id === selectedTileId);
 
@@ -120,8 +128,10 @@ const PropertyPanel: React.FC = () => {
 
   const handleDeleteTile = () => {
     if (!selectedTile) return;
-    dispatch(removeTile({ x: selectedTile.x, y: selectedTile.y }));
+    const { x, y } = selectedTile;
+    dispatch(removeTile({ x, y }));
     dispatch(setSelectedTileId(null));
+    dispatch(setSelectedGrid({ x, y }));
   };
 
   const handlePlayerStartChange = (field: string, value: number) => {
@@ -293,21 +303,6 @@ const PropertyPanel: React.FC = () => {
           )}
 
           <Divider style={{ margin: '16px 0', borderColor: '#333' }} />
-          <h4 style={{ color: '#fff', marginBottom: 8 }}>瓦片事件</h4>
-          <Badge count={selectedTile.events?.length || 0} offset={[8, 0]} size="small">
-            <Button
-              icon={<ThunderboltOutlined />}
-              onClick={() => {
-                dispatch(setEditingTileId(selectedTile.id));
-                dispatch(setTileEventPanelOpen(true));
-              }}
-              style={{ width: '100%', marginBottom: 12 }}
-            >
-              编辑瓦片事件
-            </Button>
-          </Badge>
-
-          <Divider style={{ margin: '16px 0', borderColor: '#333' }} />
           <Button
             type="primary"
             danger
@@ -318,6 +313,20 @@ const PropertyPanel: React.FC = () => {
             删除 Tile
           </Button>
         </Form>
+      </div>
+    );
+  }
+
+  if (selectedGrid) {
+    return (
+      <div style={{ width: 280, background: '#001529', borderLeft: '1px solid #333', padding: 16, overflow: 'auto' }}>
+        <div style={{ color: '#fff', marginBottom: 16 }}>
+          <h3>空格子</h3>
+          <Divider style={{ margin: '8px 0', borderColor: '#333' }} />
+          <p style={{ color: '#999', fontSize: 12, margin: 0 }}>
+            坐标 ({selectedGrid.x}, {selectedGrid.y})，可在此放置 Tile 或用于剧情编辑器的「地图选格」。
+          </p>
+        </div>
       </div>
     );
   }

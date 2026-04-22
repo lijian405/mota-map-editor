@@ -41,14 +41,13 @@ export const presetTiles: PresetTile[] = [
   { name: 'business', type: 'business', tileType: 'npc', layer: 'object', src: '/images/npc/business.png' }
 ];
 
-for (let i = 1; i <= 33; i++) {
-  const num = i < 10 ? '0' + i : '' + i;
+for (let i = 100; i < 133; i++) {
   presetTiles.push({
-    name: 'monster' + num,
-    type: 'monster' + num,
+    name:  i.toString(),
+    type: 'monster',
     tileType: 'monster',
     layer: 'object',
-    src: '/images/monsters/monster' + num + '.png'
+    src: '/images/monsters/'+i + '.png'
   });
 }
 

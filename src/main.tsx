@@ -5,6 +5,7 @@ import { ConfigProvider, theme } from 'antd';
 import { store } from './store';
 import App from './App';
 import zhCN from 'antd/locale/zh_CN';
+import '@xyflow/react/dist/style.css';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

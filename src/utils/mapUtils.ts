@@ -2,7 +2,6 @@ import { saveAs } from 'file-saver';
 import { MapData, Tile, TileType } from '../types';
 import { presetTiles } from '../data/presetTiles';
 
-/** 与导出/运行时约定一致：地形为 terrain，其余为 object */
 export const tileLayerFromTileType = (tileType: string): Tile['layer'] =>
   tileType === 'terrain' ? 'terrain' : 'object';
 
@@ -18,7 +17,6 @@ function isTileKind(s: string): s is (typeof TILE_KINDS)[number] {
   return (TILE_KINDS as readonly string[]).includes(s);
 }
 
-/** preset 的 tileType → 导出/面板用大类（门 → gate） */
 export function tileKindFromPresetTileType(tileType: TileType): string {
   if (tileType === 'door') return 'gate';
   if (tileType === 'mechanism') return 'terrain';
@@ -26,11 +24,13 @@ export function tileKindFromPresetTileType(tileType: TileType): string {
 }
 
 function normalizeTileRaw(raw: Tile): Tile {
+  if(raw.type === 'monster') {
+    console.log(raw.name);
+  }
   const x = Number(raw.x);
   const y = Number(raw.y);
   const id = typeof raw.id === 'string' ? raw.id : `tile_${x}_${y}`;
   const properties = raw.properties && typeof raw.properties === 'object' ? raw.properties : {};
-  const events = Array.isArray(raw.events) ? raw.events : [];
 
   let nameField = typeof raw.name === 'string' ? raw.name : '';
   if (nameField === 'greenGate') nameField = 'greengate';
@@ -51,12 +51,13 @@ function normalizeTileRaw(raw: Tile): Tile {
     const legacyKey = nameField || rawKind;
     preset = presetTiles.find(p => p.type === legacyKey || p.name === legacyKey);
     if (preset) {
-      name = preset.type;
+      name = preset.name;
       kind = tileKindFromPresetTileType(preset.tileType as TileType);
     } else {
       name = nameField || legacyKey;
       kind = isTileKind(rawKind) ? rawKind : 'terrain';
       const tileType = (raw.tileType as TileType) || 'terrain';
+
       return {
         id,
         x,
@@ -66,8 +67,7 @@ function normalizeTileRaw(raw: Tile): Tile {
         tileType,
         layer: inferTileLayer({ layer: raw.layer, tileType }),
         src: raw.src,
-        properties,
-        events
+        properties
       };
     }
   }
@@ -83,8 +83,7 @@ function normalizeTileRaw(raw: Tile): Tile {
       tileType,
       layer: inferTileLayer({ layer: raw.layer, tileType }),
       src: raw.src,
-      properties,
-      events
+      properties
     };
   }
 
@@ -94,16 +93,14 @@ function normalizeTileRaw(raw: Tile): Tile {
     x,
     y,
     type: kind,
-    name: preset.type,
+    name: preset.name,
     tileType,
     layer: inferTileLayer({ layer: raw.layer, tileType }),
     src: raw.src ?? preset.src,
-    properties,
-    events
+    properties
   };
 }
 
-/** 同一格只保留最后一个瓦片（与导出 fill逻辑一致） */
 export function dedupeTilesByCell(tiles: Tile[]): Tile[] {
   const byKey = new Map<string, Tile>();
   for (const t of tiles) {
@@ -112,21 +109,16 @@ export function dedupeTilesByCell(tiles: Tile[]): Tile[] {
   return Array.from(byKey.values());
 }
 
-/** 历史「整图填充」生成的瓦片（导出时曾写入 border_x_y / 内圈 floor_x_y） */
 export function isSyntheticFillTile(t: Tile): boolean {
   if (t.name === 'floor' && /^floor_\d+_\d+$/.test(t.id)) return true;
   if (t.name === 'wall' && /^border_\d+_\d+$/.test(t.id)) return true;
   return false;
 }
 
-/**
- * 剔除合成填充格。手动放置的地板 id 通常含时间戳，不会误删。
- */
 export function stripSyntheticFillTiles(tiles: Tile[]): Tile[] {
   return tiles.filter(t => !isSyntheticFillTile(t));
 }
 
-/** 打开 JSON 后规范化：去重格子、补全 layer / events、去掉合成填充格 */
 export function normalizeMapData(data: MapData): MapData {
   return {
     ...data,
@@ -137,7 +129,6 @@ export function normalizeMapData(data: MapData): MapData {
   };
 }
 
-/** 仅导出编辑中的瓦片，不整图填充墙/地板 */
 export const exportMapToJson = (mapData: MapData, filename: string = 'map.json'): void => {
   const exportData: MapData = {
     ...mapData,
@@ -195,9 +186,7 @@ export const downloadSampleMap = (): void => {
       mapHeight: 15,
       playerStart: { x: 2, y: 2, hp: 1000, attack: 10, defense: 10, gold: 0, yellowKeys: 1, blueKeys: 0, redKeys: 0 },
       tiles: [],
-      stairs: { up: null, down: null },
-      globalEvents: [],
-      customEvents: []
+      stairs: { up: null, down: null }
     }]
   };
 
@@ -212,8 +201,7 @@ export const downloadSampleMap = (): void => {
           name: 'wall',
           tileType: 'terrain',
           layer: 'terrain',
-          properties: {},
-          events: []
+          properties: {}
         });
       } else if (y === 2 && x > 2 && x < 7) {
         sampleMap.floors[0].tiles.push({
@@ -224,8 +212,7 @@ export const downloadSampleMap = (): void => {
           name: 'floor',
           tileType: 'terrain',
           layer: 'terrain',
-          properties: {},
-          events: []
+          properties: {}
         });
       }
     }

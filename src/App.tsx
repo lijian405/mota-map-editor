@@ -5,10 +5,9 @@ import TileLibrary from './components/TileLibrary';
 import MapCanvas from './components/MapCanvas';
 import PropertyPanel from './components/PropertyPanel';
 import StatusBar from './components/StatusBar';
-import EventPanel from './components/EventPanel';
-import TileEventPanel from './components/TileEventPanel';
 import PreviewMode from './components/PreviewMode';
-import { setEventPanelOpen, setPreviewOpen, setCopiedTile, setSelectedTileForPlacement } from './store/editorSlice';
+import StoryWorkspace from './components/story/StoryWorkspace';
+import { setPreviewOpen, setCopiedTile, setSelectedTileForPlacement } from './store/editorSlice';
 import { setMapData, undo, redo } from './store/mapSlice';
 import { presetTiles } from './data/presetTiles';
 import { message } from 'antd';
@@ -19,7 +18,7 @@ const AUTOSAVE_INTERVAL = 5000;
 function App() {
   const dispatch = useAppDispatch();
   const mapData = useAppSelector(state => state.map.mapData);
-  const eventPanelOpen = useAppSelector(state => state.editor.eventPanelOpen);
+  const workspace = useAppSelector(state => state.editor.workspace);
   const previewOpen = useAppSelector(state => state.editor.previewOpen);
   const selectedTileId = useAppSelector(state => state.map.selectedTileId);
   const copiedTile = useAppSelector(state => state.editor.copiedTile);
@@ -57,6 +56,7 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (workspace !== 'map') return;
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'c') {
           if (selectedTileId) {
@@ -67,7 +67,7 @@ function App() {
                 const preset = presetTiles.find(p => p.type === tile.name || p.name === tile.name);
                 if (preset) {
                   dispatch(setCopiedTile({
-                    type: preset.type,
+                    name: preset.name,
                     tileType: preset.tileType,
                     src: preset.src
                   }));
@@ -98,19 +98,21 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTileId, copiedTile, mapData, dispatch, pastLength, futureLength]);
+  }, [workspace, selectedTileId, copiedTile, mapData, dispatch, pastLength, futureLength]);
 
   return (
     <div className="app-container">
       <Toolbar />
-      <div className="main-content">
-        <TileLibrary />
-        <MapCanvas />
-        <PropertyPanel />
-      </div>
-      <StatusBar />
-      <EventPanel open={eventPanelOpen} onClose={() => dispatch(setEventPanelOpen(false))} />
-      <TileEventPanel />
+      {workspace === 'map' ? (
+        <div className="main-content">
+          <TileLibrary />
+          <MapCanvas />
+          <PropertyPanel />
+        </div>
+      ) : (
+        <StoryWorkspace />
+      )}
+      {workspace === 'map' && <StatusBar />}
       <PreviewMode open={previewOpen} onClose={() => dispatch(setPreviewOpen(false))} />
     </div>
   );

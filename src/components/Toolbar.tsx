@@ -1,5 +1,5 @@
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { Button, Space, Dropdown, Slider, Tooltip, message, Upload, Popconfirm, Modal } from 'antd';
+import { Button, Space, Dropdown, Slider, Tooltip, message, Upload, Popconfirm, Modal, Segmented } from 'antd';
 import {
   PlusOutlined,
   MinusOutlined,
@@ -13,12 +13,11 @@ import {
   BorderOutlined,
   EyeOutlined,
   ExperimentOutlined,
-  ThunderboltOutlined,
   CopyOutlined,
   DeleteOutlined,
   KeyOutlined
 } from '@ant-design/icons';
-import { setZoom, toggleGrid, resetView, setEventPanelOpen, setPreviewOpen, setCopiedTile, setSelectedTileForPlacement } from '../store/editorSlice';
+import { setZoom, toggleGrid, resetView, setPreviewOpen, setCopiedTile, setSelectedTileForPlacement, setWorkspace } from '../store/editorSlice';
 import { addFloor, removeFloor, switchFloor, setMapData, clearMap, undo, redo } from '../store/mapSlice';
 import { exportMapToJson, importMapFromJson } from '../utils/mapUtils';
 import type { MenuProps } from 'antd';
@@ -28,6 +27,7 @@ import { useState } from 'react';
 
 const Toolbar: React.FC = () => {
   const dispatch = useAppDispatch();
+  const workspace = useAppSelector(state => state.editor.workspace);
   const zoom = useAppSelector(state => state.editor.zoom);
   const showGrid = useAppSelector(state => state.editor.showGrid);
   const mapData = useAppSelector(state => state.map.mapData);
@@ -74,7 +74,7 @@ const Toolbar: React.FC = () => {
     const preset = presetTiles.find(p => p.type === tile.name || p.name === tile.name);
     if (preset) {
       dispatch(setCopiedTile({
-        type: preset.type,
+        name: preset.name,
         tileType: preset.tileType,
         src: preset.src
       }));
@@ -125,101 +125,115 @@ const Toolbar: React.FC = () => {
       borderBottom: '1px solid #333'
     }}>
       <Space>
-        <Tooltip title="新建地图">
-          <Button icon={<PlusOutlined />} type="primary" />
-        </Tooltip>
-        <Upload beforeUpload={handleOpen} showUploadList={false} accept=".json">
-          <Tooltip title="打开地图">
-            <Button icon={<FolderOpenOutlined />} />
-          </Tooltip>
-        </Upload>
-        <Tooltip title="保存地图">
-          <Button icon={<SaveOutlined />} onClick={handleSave} />
-        </Tooltip>
+        <Segmented
+          value={workspace}
+          onChange={(v) => dispatch(setWorkspace(v as 'map' | 'story'))}
+          options={[
+            { value: 'map', label: '地图' },
+            { value: 'story', label: '剧情' }
+          ]}
+        />
         <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
-        <Tooltip title="撤销 (Ctrl+Z)">
-          <Button icon={<UndoOutlined />} onClick={() => dispatch(undo())} disabled={!canUndo} />
-        </Tooltip>
-        <Tooltip title="重做 (Ctrl+Y)">
-          <Button icon={<RedoOutlined />} onClick={() => dispatch(redo())} disabled={!canRedo} />
-        </Tooltip>
-        <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
-        <Dropdown menu={{ items: floorItems, onClick: handleFloorChange }} trigger={['click']}>
-          <Button>第 {mapData.currentFloor} 层 ▾</Button>
-        </Dropdown>
-        <Tooltip title="添加楼层">
-          <Button icon={<PlusOutlined />} onClick={handleAddFloor} />
-        </Tooltip>
-        <Popconfirm
-          title="删除当前楼层？"
-          description="该层地图与事件将被移除，楼层号会重新连续编号。"
-          okText="删除"
-          cancelText="取消"
-          okButtonProps={{ danger: true }}
-          disabled={mapData.floors.length <= 1}
-          onConfirm={handleRemoveCurrentFloor}
-        >
-          <Tooltip title={mapData.floors.length <= 1 ? '至少保留一层' : '删除当前楼层'}>
-            <Button icon={<MinusOutlined />} danger disabled={mapData.floors.length <= 1} />
-          </Tooltip>
-        </Popconfirm>
-        <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
-        <Tooltip title="复制 (Ctrl+C)">
-          <Button icon={<CopyOutlined />} onClick={handleCopyTile} />
-        </Tooltip>
-        <Tooltip title="粘贴 (Ctrl+V)">
-          <Button icon={<CopyOutlined />} onClick={handlePasteTile} disabled={!copiedTile} />
-        </Tooltip>
-        <Popconfirm
-          title="清空当前楼层？"
-          description="该层所有放置的 Tile 将被清除。"
-          okText="清空"
-          cancelText="取消"
-          okButtonProps={{ danger: true }}
-          onConfirm={handleClearMap}
-        >
-          <Tooltip title="清空当前楼层">
-            <Button icon={<DeleteOutlined />} danger />
-          </Tooltip>
-        </Popconfirm>
+        {workspace === 'map' && (
+          <>
+            <Tooltip title="新建地图">
+              <Button icon={<PlusOutlined />} type="primary" />
+            </Tooltip>
+            <Upload beforeUpload={handleOpen} showUploadList={false} accept=".json">
+              <Tooltip title="打开地图">
+                <Button icon={<FolderOpenOutlined />} />
+              </Tooltip>
+            </Upload>
+            <Tooltip title="保存地图">
+              <Button icon={<SaveOutlined />} onClick={handleSave} />
+            </Tooltip>
+            <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
+            <Tooltip title="撤销 (Ctrl+Z)">
+              <Button icon={<UndoOutlined />} onClick={() => dispatch(undo())} disabled={!canUndo} />
+            </Tooltip>
+            <Tooltip title="重做 (Ctrl+Y)">
+              <Button icon={<RedoOutlined />} onClick={() => dispatch(redo())} disabled={!canRedo} />
+            </Tooltip>
+            <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
+            <Dropdown menu={{ items: floorItems, onClick: handleFloorChange }} trigger={['click']}>
+              <Button>第 {mapData.currentFloor} 层 ▾</Button>
+            </Dropdown>
+            <Tooltip title="添加楼层">
+              <Button icon={<PlusOutlined />} onClick={handleAddFloor} />
+            </Tooltip>
+            <Popconfirm
+              title="删除当前楼层？"
+              description="该层地图与事件将被移除，楼层号会重新连续编号。"
+              okText="删除"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              disabled={mapData.floors.length <= 1}
+              onConfirm={handleRemoveCurrentFloor}
+            >
+              <Tooltip title={mapData.floors.length <= 1 ? '至少保留一层' : '删除当前楼层'}>
+                <Button icon={<MinusOutlined />} danger disabled={mapData.floors.length <= 1} />
+              </Tooltip>
+            </Popconfirm>
+            <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
+            <Tooltip title="复制 (Ctrl+C)">
+              <Button icon={<CopyOutlined />} onClick={handleCopyTile} />
+            </Tooltip>
+            <Tooltip title="粘贴 (Ctrl+V)">
+              <Button icon={<CopyOutlined />} onClick={handlePasteTile} disabled={!copiedTile} />
+            </Tooltip>
+            <Popconfirm
+              title="清空当前楼层？"
+              description="该层所有放置的 Tile 将被清除。"
+              okText="清空"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              onConfirm={handleClearMap}
+            >
+              <Tooltip title="清空当前楼层">
+                <Button icon={<DeleteOutlined />} danger />
+              </Tooltip>
+            </Popconfirm>
+          </>
+        )}
       </Space>
 
       <Space>
-        <Tooltip title="缩小">
-          <Button icon={<ZoomOutOutlined />} onClick={() => dispatch(setZoom(zoom - 0.25))} disabled={zoom <= 0.25} />
-        </Tooltip>
-        <Slider
-          style={{ width: 100 }}
-          min={0.25}
-          max={2}
-          step={0.25}
-          value={zoom}
-          onChange={(v) => dispatch(setZoom(v))}
-          tooltip={{ formatter: (v) => `${Math.round((v || 1) * 100)}%` }}
-        />
-        <Tooltip title="放大">
-          <Button icon={<ZoomInOutlined />} onClick={() => dispatch(setZoom(zoom + 0.25))} disabled={zoom >= 2} />
-        </Tooltip>
-        <Tooltip title="重置视图">
-          <Button icon={<AimOutlined />} onClick={() => dispatch(resetView())} />
-        </Tooltip>
-        <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
-        <Tooltip title="显示/隐藏网格">
-          <Button
-            icon={<BorderOutlined />}
-            type={showGrid ? 'primary' : 'default'}
-            onClick={() => dispatch(toggleGrid())}
-          />
-        </Tooltip>
-        <Tooltip title="预览模式">
-          <Button icon={<EyeOutlined />} onClick={() => dispatch(setPreviewOpen(true))} />
-        </Tooltip>
-        <Tooltip title="关卡验证">
-          <Button icon={<ExperimentOutlined />} />
-        </Tooltip>
-        <Tooltip title="事件编辑">
-          <Button icon={<ThunderboltOutlined />} onClick={() => dispatch(setEventPanelOpen(true))} />
-        </Tooltip>
+        {workspace === 'map' && (
+          <>
+            <Tooltip title="缩小">
+              <Button icon={<ZoomOutOutlined />} onClick={() => dispatch(setZoom(zoom - 0.25))} disabled={zoom <= 0.25} />
+            </Tooltip>
+            <Slider
+              style={{ width: 100 }}
+              min={0.25}
+              max={2}
+              step={0.25}
+              value={zoom}
+              onChange={(v) => dispatch(setZoom(v))}
+              tooltip={{ formatter: (v) => `${Math.round((v || 1) * 100)}%` }}
+            />
+            <Tooltip title="放大">
+              <Button icon={<ZoomInOutlined />} onClick={() => dispatch(setZoom(zoom + 0.25))} disabled={zoom >= 2} />
+            </Tooltip>
+            <Tooltip title="重置视图">
+              <Button icon={<AimOutlined />} onClick={() => dispatch(resetView())} />
+            </Tooltip>
+            <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
+            <Tooltip title="显示/隐藏网格">
+              <Button
+                icon={<BorderOutlined />}
+                type={showGrid ? 'primary' : 'default'}
+                onClick={() => dispatch(toggleGrid())}
+              />
+            </Tooltip>
+            <Tooltip title="预览模式">
+              <Button icon={<EyeOutlined />} onClick={() => dispatch(setPreviewOpen(true))} />
+            </Tooltip>
+            <Tooltip title="关卡验证">
+              <Button icon={<ExperimentOutlined />} />
+            </Tooltip>
+          </>
+        )}
         <Tooltip title="快捷键">
           <Button icon={<KeyOutlined />} onClick={() => setShortcutsModalOpen(true)} />
         </Tooltip>

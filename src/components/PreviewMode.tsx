@@ -5,16 +5,6 @@ import { presetTiles } from '../data/presetTiles';
 import { MAP_TILE_PX } from '../utils/mapBoardGeometry';
 import { MapBorderFrame } from './MapBorderFrame';
 import { isSyntheticFillTile, stripSyntheticFillTiles } from '../utils/mapUtils';
-import {
-  getPreviewTile,
-  makeTileFromType,
-  previewMapCellKey,
-  runEventsWithTrigger,
-  runEventsWithTriggerReturnWork,
-  runGameInitEvents,
-  type PreviewContext,
-  type PreviewPlayer
-} from '../utils/previewEventRuntime';
 import type { Tile, Floor, PresetTile } from '../types';
 
 function presetForMapTile(tile: Pick<Tile, 'name' | 'type'>): PresetTile | undefined {
@@ -29,11 +19,16 @@ interface PreviewModeProps {
   onClose: () => void;
 }
 
-function bumpDirFromDelta(dx: number, dy: number): 'up' | 'down' | 'left' | 'right' {
-  if (dx === 1) return 'right';
-  if (dx === -1) return 'left';
-  if (dy === 1) return 'down';
-  return 'up';
+interface PreviewPlayer {
+  x: number;
+  y: number;
+  hp: number;
+  attack: number;
+  defense: number;
+  gold: number;
+  yellowKeys: number;
+  blueKeys: number;
+  redKeys: number;
 }
 
 const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
@@ -51,8 +46,6 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
     blueKeys: 0,
     redKeys: 0
   });
-  const [triggeredEventIds, setTriggeredEventIds] = useState<Set<string>>(() => new Set());
-  const [customVars, setCustomVarsState] = useState<Record<string, unknown>>({});
   const [tileOverrides, setTileOverridesState] = useState<Map<string, Tile | null>>(() => new Map());
   const [defeatedMonsterKeys, setDefeatedMonsterKeys] = useState<Set<string>>(() => new Set());
 
@@ -70,49 +63,17 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
     setLog(prev => [...prev.slice(-19), `${new Date().toLocaleTimeString()}: ${message}`]);
   }, []);
 
-  const makeContext = useCallback(
-    (patch?: {
-      player?: PreviewPlayer;
-      tileOverrides?: Map<string, Tile | null>;
-      defeatedMonsterKeys?: Set<string>;
-    }): PreviewContext => {
-      return {
-        mapData,
-        floorId: previewFloorId,
-        player: patch?.player ?? player,
-        triggeredEventIds,
-        customVars,
-        tileOverrides: patch?.tileOverrides ?? tileOverrides,
-        defeatedMonsterKeys: patch?.defeatedMonsterKeys ?? defeatedMonsterKeys,
-        addLog,
-        setPlayer,
-        setFloorId: setPreviewFloorId,
-        setTriggered: fn => setTriggeredEventIds(prev => fn(new Set(prev))),
-        setCustomVars: fn => setCustomVarsState(fn),
-        setTileOverrides: fn => setTileOverridesState(fn),
-        setCollectedItems
-      };
-    },
-    [
-      mapData,
-      previewFloorId,
-      player,
-      triggeredEventIds,
-      customVars,
-      tileOverrides,
-      defeatedMonsterKeys,
-      addLog
-    ]
-  );
-
   const previewTileAt = useCallback(
     (x: number, y: number, overrides?: Map<string, Tile | null>) => {
       const o = overrides ?? tileOverrides;
-      const t = getPreviewTile(mapData, previewFloorId, x, y, o);
-      if (t && isSyntheticFillTile(t)) return undefined;
-      return t;
+      const floor = mapData.floors.find((f: Floor) => f.floorId === previewFloorId);
+      if (!floor) return undefined;
+      const tile = floor.tiles.find(t => t.x === x && t.y === y);
+      if (!tile) return undefined;
+      if (isSyntheticFillTile(tile)) return undefined;
+      return o.get(`${previewFloorId},${x},${y}`) ?? tile;
     },
-    [mapData, previewFloorId, tileOverrides]
+    [mapData.floors, previewFloorId, tileOverrides]
   );
 
   const getTileAt = useCallback(
@@ -137,31 +98,12 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
     };
     setPreviewFloorId(mapData.currentFloor);
     setPlayer(p);
-    setTriggeredEventIds(new Set());
-    setCustomVarsState({});
     setTileOverridesState(new Map());
     setDefeatedMonsterKeys(new Set());
     setCollectedItems(new Set());
     setLog([]);
     setGameOver(false);
-
-    const ctx: PreviewContext = {
-      mapData,
-      floorId: floor.floorId,
-      player: p,
-      triggeredEventIds: new Set(),
-      customVars: {},
-      tileOverrides: new Map(),
-      defeatedMonsterKeys: new Set(),
-      addLog,
-      setPlayer,
-      setFloorId: setPreviewFloorId,
-      setTriggered: fn => setTriggeredEventIds(prev => fn(new Set(prev))),
-      setCustomVars: fn => setCustomVarsState(fn),
-      setTileOverrides: fn => setTileOverridesState(fn),
-      setCollectedItems
-    };
-    runGameInitEvents(floor, ctx);
+    addLog('预览开始');
   }, [mapData, addLog]);
 
   useEffect(() => {
@@ -194,51 +136,6 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
     [previewFloor, getTileAt, player]
   );
 
-  const runStepEvents = useCallback(
-    (
-      x: number,
-      y: number,
-      nextPlayer: PreviewPlayer,
-      patch?: { tileOverrides?: Map<string, Tile | null>; defeatedMonsterKeys?: Set<string> }
-    ) => {
-      const overrides = patch?.tileOverrides ?? tileOverrides;
-      const tile = previewTileAt(x, y, overrides);
-      const ctx = makeContext({
-        player: nextPlayer,
-        tileOverrides: overrides,
-        defeatedMonsterKeys: patch?.defeatedMonsterKeys ?? defeatedMonsterKeys
-      });
-
-      if (tile?.events?.length) {
-        runEventsWithTrigger(tile.events, 'step_on_tile', ctx, { tileAt: tile });
-      }
-    },
-    [previewTileAt, tileOverrides, defeatedMonsterKeys, makeContext]
-  );
-
-  const runBumpEvents = useCallback(
-    (tx: number, ty: number, dx: number, dy: number) => {
-      const tile = previewTileAt(tx, ty);
-      if (!tile?.events?.length) return;
-      const ctx = makeContext();
-      const dir = bumpDirFromDelta(dx, dy);
-      runEventsWithTrigger(tile.events, 'bump_tile', ctx, { tileAt: tile, bumpDirection: dir });
-    },
-    [previewTileAt, makeContext]
-  );
-
-  const runTalkEvents = useCallback(() => {
-    const tile = previewTileAt(player.x, player.y);
-    if (!tile?.events?.length) return;
-    const preset = presetForMapTile(tile);
-    if (preset?.tileType !== 'npc') {
-      addLog('当前格没有可对话的 NPC');
-      return;
-    }
-    const ctx = makeContext();
-    runEventsWithTrigger(tile.events, 'talk_to_tile', ctx, { tileAt: tile });
-  }, [previewTileAt, player.x, player.y, makeContext, addLog]);
-
   const handleMove = useCallback(
     (dx: number, dy: number) => {
       if (gameOver) return;
@@ -247,17 +144,12 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
       const newY = player.y + dy;
 
       if (!canMoveTo(newX, newY)) {
-        runBumpEvents(newX, newY, dx, dy);
         addLog(`无法移动到 (${newX}, ${newY})`);
         return;
       }
 
       let next: PreviewPlayer = { ...player, x: newX, y: newY };
       const tile = previewTileAt(newX, newY);
-
-      let monsterWon = false;
-      let nextDefeated = defeatedMonsterKeys;
-      let nextOverrides = tileOverrides;
 
       if (tile) {
         const preset = presetForMapTile(tile);
@@ -306,60 +198,28 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
 
           if (player.attack > monsterDefense) {
             addLog(`击败了 ${tile.properties?.name || preset.name}！`);
-            monsterWon = true;
-            nextDefeated = new Set(defeatedMonsterKeys);
-            nextDefeated.add(previewMapCellKey(previewFloorId, newX, newY));
-            const floorTile = makeTileFromType('floor', newX, newY, previewFloorId);
-            nextOverrides = new Map(tileOverrides);
-            if (floorTile) {
-              nextOverrides.set(previewMapCellKey(previewFloorId, newX, newY), floorTile);
-            }
+            const newDefeated = new Set(defeatedMonsterKeys);
+            newDefeated.add(`${previewFloorId},${newX},${newY}`);
+            setDefeatedMonsterKeys(newDefeated);
+            const newOverrides = new Map(tileOverrides);
+            newOverrides.set(`${previewFloorId},${newX},${newY}`, { ...tile, name: 'floor', type: 'terrain', tileType: 'terrain' });
+            setTileOverridesState(newOverrides);
           }
         }
       }
 
-      let workPlayer = next;
-      let workOverrides = tileOverrides;
-      let stepPatch: { tileOverrides?: Map<string, Tile | null>; defeatedMonsterKeys?: Set<string> } | undefined;
-
-      if (monsterWon) {
-        setDefeatedMonsterKeys(nextDefeated);
-        workOverrides = nextOverrides;
-        if (previewFloor) {
-          const ctxD = makeContext({
-            player: next,
-            defeatedMonsterKeys: nextDefeated,
-            tileOverrides: workOverrides
-          });
-          const w = runEventsWithTriggerReturnWork(
-            [...previewFloor.globalEvents, ...previewFloor.customEvents],
-            'defeat_monster',
-            ctxD,
-            { defeatAt: { x: newX, y: newY, floorId: previewFloorId } }
-          );
-          workPlayer = w.player;
-          workOverrides = w.tileOverrides;
-        }
-        stepPatch = { tileOverrides: workOverrides, defeatedMonsterKeys: nextDefeated };
-      }
-
-      setPlayer(workPlayer);
+      setPlayer(next);
       addLog(`移动到 (${newX}, ${newY})`);
-      runStepEvents(newX, newY, workPlayer, stepPatch);
     },
     [
       gameOver,
       player,
       canMoveTo,
       previewFloorId,
-      previewFloor,
-      tileOverrides,
-      defeatedMonsterKeys,
-      addLog,
-      runBumpEvents,
-      runStepEvents,
       previewTileAt,
-      makeContext
+      defeatedMonsterKeys,
+      tileOverrides,
+      addLog
     ]
   );
 
@@ -371,11 +231,6 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === ' ' || k === 'e') {
-        e.preventDefault();
-        runTalkEvents();
-        return;
-      }
       switch (k) {
         case 'w':
         case 'arrowup':
@@ -400,7 +255,7 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, runTalkEvents]);
+  }, [open]);
 
   useEffect(() => {
     if (player.hp <= 0) {
@@ -475,31 +330,7 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
             boxSizing: 'border-box',
             zIndex: 5
           }}
-        >
-          {t.events && t.events.length > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                width: 12,
-                height: 12,
-                borderRadius: '0 0 0 4px',
-                background: '#faad14',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 8,
-                color: '#000',
-                fontWeight: 'bold',
-                lineHeight: 1,
-                pointerEvents: 'none'
-              }}
-            >
-              {'\u26A1'}
-            </div>
-          )}
-        </div>
+        />
       );
     });
 
@@ -558,7 +389,7 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
           <div style={{ marginTop: 16, padding: 8, background: '#111', borderRadius: 4 }}>
             <h4 style={{ color: '#fff', marginBottom: 8 }}>操作说明</h4>
             <p style={{ color: '#888', fontSize: 12 }}>
-              W/A/S/D 或方向键移动 · 空格 / E 与 NPC 对话（触发 talk_to_tile）
+              W/A/S/D 或方向键移动
             </p>
           </div>
         </div>

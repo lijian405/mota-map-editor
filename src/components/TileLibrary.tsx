@@ -21,7 +21,7 @@ const TileLibrary: React.FC = () => {
 
   const handleTileClick = (tile: typeof presetTiles[0]) => {
     dispatch(setSelectedTileForPlacement({
-      type: tile.type,
+      name: tile.name,
       tileType: tile.tileType,
       src: tile.src
     }));
@@ -44,13 +44,13 @@ const TileLibrary: React.FC = () => {
               style={{
                 width: 40,
                 height: 40,
-                border: selectedTileForPlacement?.type === tile.type ? '2px solid #1890ff' : '1px solid #333',
+                border: selectedTileForPlacement?.name === tile.name ? '2px solid #1890ff' : '1px solid #333',
                 borderRadius: 4,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: selectedTileForPlacement?.type === tile.type ? '#1a3a5c' : '#0a0a14',
+                background: selectedTileForPlacement?.name === tile.name ? '#1a3a5c' : '#0a0a14',
                 transition: 'all 0.2s'
               }}
             >

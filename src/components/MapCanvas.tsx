@@ -1,6 +1,8 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { useStore } from 'react-redux';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setSelectedTileId, addTile, updateTile, removeTile, saveHistory } from '../store/mapSlice';
+import type { RootState } from '../store';
+import { setSelectedTileId, setSelectedGrid, addTile, updateTile, removeTile, saveHistory } from '../store/mapSlice';
 import { tileLayerFromTileType, tileKindFromPresetTileType } from '../utils/mapUtils';
 import { presetTiles } from '../data/presetTiles';
 import { MAP_TILE_PX } from '../utils/mapBoardGeometry';
@@ -12,6 +14,7 @@ const TILE_SIZE = MAP_TILE_PX;
 
 const MapCanvas: React.FC = () => {
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const isTileDraggingRef = useRef(false);
@@ -22,6 +25,7 @@ const MapCanvas: React.FC = () => {
 
   const mapData = useAppSelector(state => state.map.mapData);
   const selectedTileId = useAppSelector(state => state.map.selectedTileId);
+  const selectedGrid = useAppSelector(state => state.map.selectedGrid);
   const selectedTileForPlacement = useAppSelector(state => state.editor.selectedTileForPlacement);
   const zoom = useAppSelector(state => state.editor.zoom);
   const panOffset = useAppSelector(state => state.editor.panOffset);
@@ -54,9 +58,11 @@ const MapCanvas: React.FC = () => {
       if (e.key === 'Delete' && selectedTileId) {
         const tileToDelete = currentFloor?.tiles.find((t: Tile) => t.id === selectedTileId);
         if (tileToDelete) {
+          const { x, y } = tileToDelete;
           dispatch(saveHistory());
-          dispatch(removeTile({ x: tileToDelete.x, y: tileToDelete.y }));
+          dispatch(removeTile({ x, y }));
           dispatch(setSelectedTileId(null));
+          dispatch(setSelectedGrid({ x, y }));
         }
       }
     };
@@ -113,6 +119,7 @@ const MapCanvas: React.FC = () => {
     dispatch(saveHistory());
     draggedTileRef.current = { tile, offsetX, offsetY };
     dispatch(setSelectedTileId(tile.id));
+    dispatch(setSelectedGrid({ x: tile.x, y: tile.y }));
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -143,10 +150,17 @@ const MapCanvas: React.FC = () => {
   };
 
   const handleMouseUp = () => {
+    const dragged = draggedTileRef.current;
     isDraggingRef.current = false;
     isTileDraggingRef.current = false;
     draggedTileRef.current = null;
     dispatch(setIsPanning(false));
+    if (dragged) {
+      const s = store.getState().map;
+      const floor = s.mapData.floors.find(f => f.floorId === s.mapData.currentFloor);
+      const t = floor?.tiles.find(x => x.id === dragged.tile.id);
+      if (t) dispatch(setSelectedGrid({ x: t.x, y: t.y }));
+    }
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -157,7 +171,7 @@ const MapCanvas: React.FC = () => {
 
     if (e.button === 0 && selectedTileForPlacement) {
       const preset = presetTiles.find(
-        p => p.type === selectedTileForPlacement.type || p.name === selectedTileForPlacement.type
+        p => p.type === selectedTileForPlacement.name || p.name === selectedTileForPlacement.name
       );
       if (!preset) return;
       const tt = preset.tileType as TileType;
@@ -166,21 +180,25 @@ const MapCanvas: React.FC = () => {
         x: pos.x,
         y: pos.y,
         type: tileKindFromPresetTileType(tt),
-        name: preset.type,
+        name: preset.name,
         tileType: tt,
         layer: tileLayerFromTileType(preset.tileType),
         src: preset.src,
-        properties: {},
-        events: []
+        properties: {}
       };
       dispatch(saveHistory());
       dispatch(addTile(newTile));
+      dispatch(setSelectedTileId(newTile.id));
+      dispatch(setSelectedGrid({ x: pos.x, y: pos.y }));
+      console.log(newTile);
     } else if (e.button === 0) {
       const existingTile = currentFloor.tiles.find((t: Tile) => t.x === pos.x && t.y === pos.y);
       if (existingTile) {
         dispatch(setSelectedTileId(existingTile.id));
+        dispatch(setSelectedGrid({ x: pos.x, y: pos.y }));
       } else {
         dispatch(setSelectedTileId(null));
+        dispatch(setSelectedGrid(pos));
       }
     }
   };
@@ -189,6 +207,7 @@ const MapCanvas: React.FC = () => {
     e.preventDefault();
     dispatch(setSelectedTileForPlacement(null));
     dispatch(setSelectedTileId(null));
+    dispatch(setSelectedGrid(null));
   };
 
   if (!currentFloor) {
@@ -222,6 +241,25 @@ const MapCanvas: React.FC = () => {
     return cells;
   };
 
+  const renderEmptySelection = () => {
+    if (!selectedGrid || selectedTileId) return null;
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: selectedGrid.x * TILE_SIZE,
+          top: selectedGrid.y * TILE_SIZE,
+          width: TILE_SIZE,
+          height: TILE_SIZE,
+          border: '2px solid #1890ff',
+          boxSizing: 'border-box',
+          pointerEvents: 'none',
+          zIndex: 4
+        }}
+      />
+    );
+  };
+
   const renderTiles = () => {
     return currentFloor.tiles.map((tile: Tile) => (
       <div
@@ -242,29 +280,6 @@ const MapCanvas: React.FC = () => {
           zIndex: 5
         }}
       >
-        {tile.events && tile.events.length > 0 && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: 12,
-              height: 12,
-              borderRadius: '0 0 0 4px',
-              background: '#faad14',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 8,
-              color: '#000',
-              fontWeight: 'bold',
-              lineHeight: 1,
-              pointerEvents: 'none'
-            }}
-          >
-            ⚡
-          </div>
-        )}
       </div>
     ));
   };
@@ -317,6 +332,7 @@ const MapCanvas: React.FC = () => {
         <MapBorderFrame mapPixelWidth={mapPixelWidth} mapPixelHeight={mapPixelHeight}>
           <div style={{ position: 'relative', width: mapPixelWidth, height: mapPixelHeight }}>
             {renderBackground()}
+            {renderEmptySelection()}
             {renderTiles()}
             {renderPlayerStart()}
           </div>

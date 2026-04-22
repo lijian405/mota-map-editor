@@ -1,5 +1,3 @@
-import { Trigger, Condition, Action, ConditionLogic } from './event';
-
 export type TileType = 'terrain' | 'item' | 'monster' | 'npc' | 'door' | 'mechanism';
 
 export type TerrainType = 'wall' | 'floor' | 'stairs_up' | 'stairs_down' | 'portal' | 'airWall' | 'lava' | 'rail' | 'shopLeft' | 'shopCenter' | 'shopRight';
@@ -7,16 +5,6 @@ export type ItemType = 'yellowkey' | 'bluekey' | 'redkey' | 'attackgem' | 'defen
 export type MonsterType = string;
 export type NpcType = 'thief' | 'wise' | 'business';
 export type DoorType = 'yellowgate' | 'bluegate' | 'redgate' | 'greengate';
-
-export interface TileEvent {
-  eventId: string;
-  trigger: Trigger;
-  conditions: Condition[];
-  conditionLogic: ConditionLogic;
-  conditionFailText?: string;
-  actions: Action[];
-  nextEvent?: string;
-}
 
 export interface Tile {
   id: string;
@@ -34,7 +22,6 @@ export interface Tile {
   layer: 'terrain' | 'object' | 'event';
   src?: string;
   properties: TileProperties;
-  events: TileEvent[];
 }
 
 export interface TileProperties {

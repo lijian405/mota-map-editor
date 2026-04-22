@@ -3,12 +3,15 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export type EditorTool = 'select' | 'paint' | 'erase' | 'fill';
 
 export interface SelectedTileInfo {
-  type: string;
+  name: string;
   tileType: string;
   src: string;
 }
 
+export type EditorWorkspace = 'map' | 'story';
+
 interface EditorState {
+  workspace: EditorWorkspace;
   currentTool: EditorTool;
   zoom: number;
   panOffset: { x: number; y: number };
@@ -17,14 +20,12 @@ interface EditorState {
   isPanning: boolean;
   hoverPosition: { x: number; y: number } | null;
   selectedTileForPlacement: SelectedTileInfo | null;
-  eventPanelOpen: boolean;
   previewOpen: boolean;
-  tileEventPanelOpen: boolean;
-  editingTileId: string | null;
   copiedTile: SelectedTileInfo | null;
 }
 
 const initialState: EditorState = {
+  workspace: 'map',
   currentTool: 'paint',
   zoom: 1,
   panOffset: { x: 0, y: 0 },
@@ -33,10 +34,7 @@ const initialState: EditorState = {
   isPanning: false,
   hoverPosition: null,
   selectedTileForPlacement: null,
-  eventPanelOpen: false,
   previewOpen: false,
-  tileEventPanelOpen: false,
-  editingTileId: null,
   copiedTile: null
 };
 
@@ -44,6 +42,9 @@ const editorSlice = createSlice({
   name: 'editor',
   initialState,
   reducers: {
+    setWorkspace: (state, action: PayloadAction<EditorWorkspace>) => {
+      state.workspace = action.payload;
+    },
     setCurrentTool: (state, action: PayloadAction<EditorTool>) => {
       state.currentTool = action.payload;
     },
@@ -72,20 +73,8 @@ const editorSlice = createSlice({
     setSelectedTileForPlacement: (state, action: PayloadAction<SelectedTileInfo | null>) => {
       state.selectedTileForPlacement = action.payload;
     },
-    setEventPanelOpen: (state, action: PayloadAction<boolean>) => {
-      state.eventPanelOpen = action.payload;
-    },
     setPreviewOpen: (state, action: PayloadAction<boolean>) => {
       state.previewOpen = action.payload;
-    },
-    setTileEventPanelOpen: (state, action: PayloadAction<boolean>) => {
-      state.tileEventPanelOpen = action.payload;
-      if (!action.payload) {
-        state.editingTileId = null;
-      }
-    },
-    setEditingTileId: (state, action: PayloadAction<string | null>) => {
-      state.editingTileId = action.payload;
     },
     setCopiedTile: (state, action: PayloadAction<SelectedTileInfo | null>) => {
       state.copiedTile = action.payload;
@@ -94,6 +83,7 @@ const editorSlice = createSlice({
 });
 
 export const {
+  setWorkspace,
   setCurrentTool,
   setZoom,
   setPanOffset,
@@ -103,10 +93,7 @@ export const {
   setHoverPosition,
   resetView,
   setSelectedTileForPlacement,
-  setEventPanelOpen,
   setPreviewOpen,
-  setTileEventPanelOpen,
-  setEditingTileId,
   setCopiedTile
 } = editorSlice.actions;
 

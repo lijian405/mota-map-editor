@@ -35,3 +35,19 @@ body {
   flex: 1;
   overflow: hidden;
 }
+
+/* React Flow：与暗色工具栏协调 */
+.story-flow-canvas .react-flow__controls button {
+  background: #262626;
+  color: #fff;
+  border: 1px solid #434343;
+}
+.story-flow-canvas .react-flow__controls button:hover {
+  background: #333;
+}
+.story-flow-canvas .react-flow__edge-path {
+  stroke: #6b6b6b;
+}
+.story-flow-canvas .react-flow__attribution {
+  display: none;
+}
