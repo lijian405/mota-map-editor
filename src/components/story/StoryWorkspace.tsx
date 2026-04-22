@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -70,6 +70,11 @@ export default function StoryWorkspace() {
   const [eventKeys, setEventKeys] = useState<string[] | null>(null);
   const [propNames, setPropNames] = useState<string[] | null>(null);
   const [editorModalOpen, setEditorModalOpen] = useState(false);
+  const [validationDismissed, setValidationDismissed] = useState(false);
+
+  useEffect(() => {
+    setValidationDismissed(false);
+  }, [document]);
 
   const openStoryEditor = (index: number) => {
     dispatch(setSelectedStoryIndex(index));
@@ -325,10 +330,12 @@ export default function StoryWorkspace() {
         </div>
       </div>
 
-      {validation.errors.length > 0 && (
+      {!validationDismissed && validation.errors.length > 0 && (
         <Alert
           type="error"
           showIcon
+          closable
+          onClose={() => setValidationDismissed(true)}
           style={{ margin: '8px 16px 0', flexShrink: 0 }}
           message={`校验错误 ${validation.errors.length} 条`}
           description={
@@ -342,10 +349,12 @@ export default function StoryWorkspace() {
           }
         />
       )}
-      {validation.warnings.length > 0 && (
+      {!validationDismissed && validation.warnings.length > 0 && (
         <Alert
           type="warning"
           showIcon
+          closable
+          onClose={() => setValidationDismissed(true)}
           style={{ margin: '8px 16px 0', flexShrink: 0 }}
           message={`提示 ${validation.warnings.length} 条`}
           description={

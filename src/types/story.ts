@@ -48,12 +48,14 @@ export type ImplementedActionType =
   | 'playSound'
   | 'screenFade'
   | 'appear'
+  | 'move'
+  | 'removeTile'
   | 'changeFloor'
   | 'changePlayerState'
   | 'giveItem'
   | 'runEvent';
 
-export type PlaceholderActionType = 'playTileAnimation' | 'move' | 'spawnTile' | 'spwanTile';
+export type PlaceholderActionType = 'playTileAnimation' | 'spawnTile' | 'spwanTile';
 
 export type StoryActionType = ImplementedActionType | PlaceholderActionType;
 
@@ -95,7 +97,6 @@ export interface StoryRoot {
 
 export const PLACEHOLDER_ACTION_TYPES: PlaceholderActionType[] = [
   'playTileAnimation',
-  'move',
   'spawnTile',
   'spwanTile'
 ];

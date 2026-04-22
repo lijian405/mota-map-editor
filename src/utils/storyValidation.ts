@@ -13,6 +13,20 @@ export interface StoryValidationResult {
 const TILE_RE = /^\d+,\d+$/;
 const NUM_RE = /^\d+$/;
 
+function isStoryPos(v: unknown): boolean {
+  return (
+    typeof v === 'number' ||
+    (typeof v === 'string' && (TILE_RE.test(v.trim()) || NUM_RE.test(v.trim()))) ||
+    (typeof v === 'object' &&
+      v !== null &&
+      !Array.isArray(v) &&
+      'x' in v &&
+      'y' in v &&
+      typeof (v as { x: unknown }).x === 'number' &&
+      typeof (v as { y: unknown }).y === 'number')
+  );
+}
+
 function strId(id: string | number): string {
   return String(id);
 }
@@ -106,23 +120,52 @@ function validateAction(
       }
       break;
     }
+    case 'move': {
+      const ent = action.entity;
+      const okEnt =
+        ent === 'player' ||
+        (ent &&
+          typeof ent === 'object' &&
+          !Array.isArray(ent) &&
+          String((ent as { type?: unknown }).type ?? '') === 'npc' &&
+          (typeof (ent as { npcId?: unknown; id?: unknown }).npcId === 'string' ||
+            typeof (ent as { npcId?: unknown; id?: unknown }).id === 'string'));
+      if (!okEnt) {
+        errors.push({
+          path: `${p}.entity`,
+          message: 'move.entity 须为 "player" 或 {type:"npc", npcId:"..."}（也兼容 id 字段）'
+        });
+      }
+      if (!isStoryPos(action.to)) {
+        errors.push({ path: `${p}.to`, message: 'move.to 必填，且须为数字、"x,y" 或 {x,y}' });
+      }
+      if (action.from !== undefined && !isStoryPos(action.from)) {
+        errors.push({ path: `${p}.from`, message: 'move.from 若填写须为数字、"x,y" 或 {x,y}' });
+      }
+      if (action.stepMs !== undefined && typeof action.stepMs !== 'number') {
+        errors.push({ path: `${p}.stepMs`, message: 'move.stepMs 若填写须为数字' });
+      }
+      break;
+    }
+    case 'removeTile': {
+      if (!isStoryPos(action.pos)) {
+        errors.push({ path: `${p}.pos`, message: 'removeTile.pos 必填，且须为数字、"x,y" 或 {x,y}' });
+      }
+      if (action.kind !== undefined && typeof action.kind !== 'string') {
+        errors.push({ path: `${p}.kind`, message: 'removeTile.kind 若填写须为字符串' });
+      }
+      if (action.name !== undefined && typeof action.name !== 'string') {
+        errors.push({ path: `${p}.name`, message: 'removeTile.name 若填写须为字符串' });
+      }
+      break;
+    }
     case 'changeFloor': {
       if (typeof action.floor !== 'number') {
         errors.push({ path: `${p}.floor`, message: 'changeFloor 需要 floor' });
       }
       if (action.playerPos !== undefined) {
         const pos = action.playerPos;
-        const ok =
-          typeof pos === 'number' ||
-          (typeof pos === 'string' && (TILE_RE.test(pos.trim()) || NUM_RE.test(pos.trim()))) ||
-          (typeof pos === 'object' &&
-            pos !== null &&
-            !Array.isArray(pos) &&
-            'x' in pos &&
-            'y' in pos &&
-            typeof (pos as { x: unknown }).x === 'number' &&
-            typeof (pos as { y: unknown }).y === 'number');
-        if (!ok) {
+        if (!isStoryPos(pos)) {
           errors.push({
             path: `${p}.playerPos`,
             message: 'playerPos 须为数字、"x,y" 字符串，或 {x,y} 对象'

@@ -31,12 +31,13 @@ const ACTION_OPTIONS: { value: StoryActionType; label: string; placeholder?: boo
   { value: 'playSound', label: '音效 (playSound)' },
   { value: 'screenFade', label: '淡入淡出 (screenFade)' },
   { value: 'appear', label: '生成实体 (appear)' },
+  { value: 'move', label: '寻路移动 (move)' },
+  { value: 'removeTile', label: '移除图块 (removeTile)' },
   { value: 'changeFloor', label: '切换楼层 (changeFloor)' },
   { value: 'changePlayerState', label: '修改玩家属性 (changePlayerState)' },
   { value: 'giveItem', label: '给予物品 (giveItem)' },
   { value: 'runEvent', label: '运行旧事件 (runEvent)' },
   { value: 'playTileAnimation', label: '图块动画（占位）', placeholder: true },
-  { value: 'move', label: '寻路移动（占位）', placeholder: true },
   { value: 'spawnTile', label: '刷瓷砖 spawnTile（占位）', placeholder: true },
   { value: 'spwanTile', label: '刷瓷砖 spwanTile（占位）', placeholder: true }
 ];
@@ -51,6 +52,10 @@ function defaultAction(type: StoryActionType): StoryAction {
       return { type: 'screenFade', animationType: 'fadeIn' };
     case 'appear':
       return { type: 'appear', entities: [] };
+    case 'move':
+      return { type: 'move', entity: 'player', to: '1,1', stepMs: 120 };
+    case 'removeTile':
+      return { type: 'removeTile', pos: '1,1' };
     case 'changeFloor':
       return { type: 'changeFloor', floor: 1, playerPos: undefined };
     case 'changePlayerState':
@@ -470,6 +475,131 @@ function ActionTypeFields({
             </div>
           </Card>
         ))}
+      </Space>
+    );
+  }
+
+  if (t === 'move') {
+    const entity = action.entity;
+    const entityKind =
+      entity === 'player'
+        ? 'player'
+        : entity && typeof entity === 'object' && !Array.isArray(entity) && 'type' in entity
+          ? String((entity as { type?: unknown }).type)
+          : 'player';
+    const npcId =
+      entity && typeof entity === 'object' && !Array.isArray(entity)
+        ? String((entity as { npcId?: unknown; id?: unknown }).npcId ?? (entity as { id?: unknown }).id ?? '')
+        : '';
+    const setEntityKind = (kind: 'player' | 'npc') => {
+      if (kind === 'player') {
+        onPatch({ ...action, type: 'move', entity: 'player' });
+      } else {
+        onPatch({ ...action, type: 'move', entity: { type: 'npc', npcId: npcId || 'wise' } });
+      }
+    };
+    const setNpcId = (next: string) => {
+      onPatch({ ...action, type: 'move', entity: { type: 'npc', npcId: next } });
+    };
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size="small">
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>entity</div>
+          <Select
+            style={{ width: '100%' }}
+            value={entityKind === 'npc' ? 'npc' : 'player'}
+            options={[
+              { value: 'player', label: 'player' },
+              { value: 'npc', label: 'npc' }
+            ]}
+            onChange={(v) => setEntityKind(v as 'player' | 'npc')}
+          />
+        </div>
+        {entityKind === 'npc' && (
+          <div>
+            <div style={{ marginBottom: 4, color: '#999' }}>npcId（或旧字段 id）</div>
+            <Input value={npcId} onChange={(e) => setNpcId(e.target.value)} placeholder="如 wise" />
+          </div>
+        )}
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>from（可选；x,y 或数字）</div>
+          <Input
+            value={action.from !== undefined && action.from !== null ? String(action.from) : ''}
+            onChange={(e) =>
+              onPatch({
+                ...action,
+                type: 'move',
+                from: e.target.value.trim() ? e.target.value.trim() : undefined
+              })
+            }
+            placeholder="留空=用实体当前格"
+          />
+        </div>
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>to（必填；x,y 或数字）</div>
+          <Input
+            value={action.to !== undefined && action.to !== null ? String(action.to) : ''}
+            onChange={(e) => onPatch({ ...action, type: 'move', to: e.target.value.trim() })}
+            placeholder="如 5,1"
+          />
+        </div>
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>stepMs（可选，默认 120）</div>
+          <InputNumber
+            style={{ width: '100%' }}
+            min={0}
+            value={typeof action.stepMs === 'number' ? action.stepMs : undefined}
+            onChange={(v) =>
+              onPatch({ ...action, type: 'move', stepMs: v === null ? undefined : Number(v) })
+            }
+          />
+        </div>
+      </Space>
+    );
+  }
+
+  if (t === 'removeTile') {
+    return (
+      <Space direction="vertical" style={{ width: '100%' }} size="small">
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>pos（必填；x,y 或数字）</div>
+          <Input
+            value={action.pos !== undefined && action.pos !== null ? String(action.pos) : ''}
+            onChange={(e) => onPatch({ ...action, type: 'removeTile', pos: e.target.value.trim() })}
+            placeholder="如 3,4"
+          />
+        </div>
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>kind（可选）</div>
+          <Select
+            style={{ width: '100%' }}
+            allowClear
+            value={typeof action.kind === 'string' && action.kind.trim() ? action.kind : undefined}
+            options={[
+              { value: 'npc', label: 'npc' },
+              { value: 'monster', label: 'monster' },
+              { value: 'item', label: 'item' },
+              { value: 'terrain', label: 'terrain' },
+              { value: 'gate', label: 'gate' }
+            ]}
+            onChange={(v) => onPatch({ ...action, type: 'removeTile', kind: v ?? undefined })}
+            placeholder="按 tile.type 过滤"
+          />
+        </div>
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>name（可选）</div>
+          <Input
+            value={typeof action.name === 'string' ? action.name : ''}
+            onChange={(e) =>
+              onPatch({
+                ...action,
+                type: 'removeTile',
+                name: e.target.value.trim() ? e.target.value.trim() : undefined
+              })
+            }
+            placeholder='按 tile.name 过滤，如 wall / 100 / yellowkey'
+          />
+        </div>
       </Space>
     );
   }

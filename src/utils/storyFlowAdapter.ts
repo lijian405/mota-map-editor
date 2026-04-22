@@ -121,6 +121,17 @@ export function summarizeAction(act: StoryAction | undefined): string {
       return `event ${act.eventId ?? act.id ?? ''}`;
     case 'playSound':
       return String(act.sound ?? '').slice(0, 36);
+    case 'move': {
+      const ent =
+        act.entity === 'player'
+          ? 'player'
+          : act.entity && typeof act.entity === 'object'
+            ? `npc:${String((act.entity as { npcId?: unknown; id?: unknown }).npcId ?? (act.entity as { id?: unknown }).id ?? '')}`
+            : 'entity';
+      return `move ${ent} → ${String(act.to ?? '')}`.slice(0, 40);
+    }
+    case 'removeTile':
+      return `rm ${String(act.pos ?? '')}`.slice(0, 40);
     case 'changeFloor':
       return `→层 ${act.floor}${
         act.playerPos !== undefined
