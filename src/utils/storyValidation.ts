@@ -11,6 +11,7 @@ export interface StoryValidationResult {
 }
 
 const TILE_RE = /^\d+,\d+$/;
+const NUM_RE = /^\d+$/;
 
 function strId(id: string | number): string {
   return String(id);
@@ -108,6 +109,25 @@ function validateAction(
     case 'changeFloor': {
       if (typeof action.floor !== 'number') {
         errors.push({ path: `${p}.floor`, message: 'changeFloor 需要 floor' });
+      }
+      if (action.playerPos !== undefined) {
+        const pos = action.playerPos;
+        const ok =
+          typeof pos === 'number' ||
+          (typeof pos === 'string' && (TILE_RE.test(pos.trim()) || NUM_RE.test(pos.trim()))) ||
+          (typeof pos === 'object' &&
+            pos !== null &&
+            !Array.isArray(pos) &&
+            'x' in pos &&
+            'y' in pos &&
+            typeof (pos as { x: unknown }).x === 'number' &&
+            typeof (pos as { y: unknown }).y === 'number');
+        if (!ok) {
+          errors.push({
+            path: `${p}.playerPos`,
+            message: 'playerPos 须为数字、"x,y" 字符串，或 {x,y} 对象'
+          });
+        }
       }
       break;
     }

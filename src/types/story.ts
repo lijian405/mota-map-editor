@@ -57,11 +57,13 @@ export type PlaceholderActionType = 'playTileAnimation' | 'move' | 'spawnTile' |
 
 export type StoryActionType = ImplementedActionType | PlaceholderActionType;
 
-export type AppearEntityType = 'player' | 'npc' | 'monster';
+export type AppearEntityType = 'player' | 'npc' | 'monster' | 'item';
+
+export type StoryPos = string | number | { x: number; y: number };
 
 export interface AppearEntity {
   type: AppearEntityType;
-  pos?: string | number | { x: number; y: number };
+  pos?: StoryPos;
   name?: string;
   delay?: number;
 }

@@ -6,15 +6,25 @@ import {
   DeleteOutlined,
   PlusOutlined
 } from '@ant-design/icons';
+import { presetTiles } from '../../data/presetTiles';
 import type {
   AppearEntity,
   ChatContentLine,
   StoryAction,
-  StoryActionType
+  StoryActionType,
+  StoryPos
 } from '../../types/story';
 import { isPlaceholderActionType } from '../../types/story';
 
 const { Text } = Typography;
+
+const MONSTER_NAME_OPTIONS = Array.from(
+  new Set(presetTiles.filter(t => t.tileType === 'monster').map(t => String(t.name)))
+).map(name => ({ value: name, label: name }));
+
+const ITEM_NAME_OPTIONS = Array.from(
+  new Set(presetTiles.filter(t => t.tileType === 'item').map(t => String(t.name)))
+).map(name => ({ value: name, label: name }));
 
 const ACTION_OPTIONS: { value: StoryActionType; label: string; placeholder?: boolean }[] = [
   { value: 'chat', label: '对话 (chat)' },
@@ -42,7 +52,7 @@ function defaultAction(type: StoryActionType): StoryAction {
     case 'appear':
       return { type: 'appear', entities: [] };
     case 'changeFloor':
-      return { type: 'changeFloor', floor: 1 };
+      return { type: 'changeFloor', floor: 1, playerPos: undefined };
     case 'changePlayerState':
       return { type: 'changePlayerState', changes: { hp: 0, gold: 0 } };
     case 'giveItem':
@@ -281,6 +291,7 @@ function ActionTypeFields({
   }
 
   if (t === 'changeFloor') {
+    const playerPos = action.playerPos as StoryPos | undefined;
     return (
       <div>
         <div style={{ marginBottom: 4, color: '#999' }}>目标楼层 floor</div>
@@ -290,6 +301,27 @@ function ActionTypeFields({
           value={typeof action.floor === 'number' ? action.floor : 1}
           onChange={(v) => onPatch({ ...action, type: 'changeFloor', floor: Number(v) || 1 })}
         />
+        <div style={{ marginTop: 8 }}>
+          <div style={{ marginBottom: 4, color: '#999' }}>玩家位置 playerPos（可选；x,y 或数字）</div>
+          <Input
+            value={
+              typeof playerPos === 'object' && playerPos && 'x' in playerPos
+                ? `${playerPos.x},${playerPos.y}`
+                : playerPos !== undefined && playerPos !== null
+                  ? String(playerPos)
+                  : ''
+            }
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              onPatch({
+                ...action,
+                type: 'changeFloor',
+                playerPos: v ? v : undefined
+              });
+            }}
+            placeholder="如 6,7 或 42"
+          />
+        </div>
       </div>
     );
   }
@@ -380,7 +412,8 @@ function ActionTypeFields({
               options={[
                 { value: 'player', label: 'player' },
                 { value: 'npc', label: 'npc' },
-                { value: 'monster', label: 'monster' }
+                { value: 'monster', label: 'monster' },
+                { value: 'item', label: 'item' }
               ]}
               onChange={(v) => patchEnt(ei, { ...ent, type: v as AppearEntity['type'] })}
             />
@@ -399,10 +432,32 @@ function ActionTypeFields({
             </div>
             <div>
               <div style={{ color: '#999', fontSize: 12 }}>name</div>
-              <Input
-                value={String(ent.name ?? '')}
-                onChange={(e) => patchEnt(ei, { ...ent, name: e.target.value })}
-              />
+              {ent.type === 'monster' ? (
+                <Select
+                  style={{ width: '100%' }}
+                  showSearch
+                  optionFilterProp="label"
+                  value={ent.name !== undefined && ent.name !== null ? String(ent.name) : undefined}
+                  options={MONSTER_NAME_OPTIONS}
+                  onChange={(v) => patchEnt(ei, { ...ent, name: v })}
+                  placeholder="选择怪物（name）"
+                />
+              ) : ent.type === 'item' ? (
+                <Select
+                  style={{ width: '100%' }}
+                  showSearch
+                  optionFilterProp="label"
+                  value={ent.name !== undefined && ent.name !== null ? String(ent.name) : undefined}
+                  options={ITEM_NAME_OPTIONS}
+                  onChange={(v) => patchEnt(ei, { ...ent, name: v })}
+                  placeholder="选择道具（name）"
+                />
+              ) : (
+                <Input
+                  value={String(ent.name ?? '')}
+                  onChange={(e) => patchEnt(ei, { ...ent, name: e.target.value })}
+                />
+              )}
             </div>
             <div style={{ marginTop: 8 }}>
               <div style={{ color: '#999', fontSize: 12 }}>delay（毫秒）</div>

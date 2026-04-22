@@ -122,7 +122,11 @@ export function summarizeAction(act: StoryAction | undefined): string {
     case 'playSound':
       return String(act.sound ?? '').slice(0, 36);
     case 'changeFloor':
-      return `→层 ${act.floor}`;
+      return `→层 ${act.floor}${
+        act.playerPos !== undefined
+          ? ` @${typeof act.playerPos === 'object' && act.playerPos ? `${(act.playerPos as { x: number }).x},${(act.playerPos as { y: number }).y}` : String(act.playerPos)}`
+          : ''
+      }`;
     case 'appear':
       return `appear ×${Array.isArray(act.entities) ? act.entities.length : 0}`;
     case 'giveItem': {
