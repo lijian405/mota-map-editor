@@ -41,6 +41,7 @@ export type ChatContentLine =
   | ({
       name?: string;
       content?: string | string[];
+      choices?: { label: string; actions: StoryAction[] }[];
     } & Record<string, unknown>);
 
 export type ImplementedActionType =
