@@ -47,7 +47,7 @@ function defaultStory(): Story {
     desc: '',
     repeatable: false,
     order: 0,
-    trigger: { type: 'floor_enter', floor: 1 },
+    trigger: { type: 'floor_enter', floor: 0 },
     actions: []
   };
 }
@@ -96,7 +96,12 @@ export default function StoryWorkspace() {
 
         if (filterFloor !== null) {
           let involves = false;
-          if (tr.type === 'floor_enter' || tr.type === 'tile_enter' || tr.type === 'monsters_defeated') {
+          if (
+            tr.type === 'floor_enter' ||
+            tr.type === 'tile_enter' ||
+            tr.type === 'monsters_defeated' ||
+            tr.type === 'all_airwalls_revealed'
+          ) {
             involves = tr.floor === filterFloor;
           } else if (tr.type === 'npc_interact') {
             involves = tr.floor === undefined || tr.floor === filterFloor;
@@ -381,13 +386,14 @@ export default function StoryWorkspace() {
                     { value: 'floor_enter', label: 'floor_enter' },
                     { value: 'tile_enter', label: 'tile_enter' },
                     { value: 'npc_interact', label: 'npc_interact' },
-                    { value: 'monsters_defeated', label: 'monsters_defeated' }
+                    { value: 'monsters_defeated', label: 'monsters_defeated' },
+                    { value: 'all_airwalls_revealed', label: 'all_airwalls_revealed' }
                   ]}
                 />
                 <InputNumber
                   style={{ width: '100%' }}
                   placeholder="楼层筛选（空=不限）"
-                  min={1}
+                  min={0}
                   value={filterFloor ?? undefined}
                   onChange={(v) => setFilterFloor(v == null || v === undefined ? null : Number(v))}
                   changeOnWheel={false}

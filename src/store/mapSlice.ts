@@ -14,8 +14,8 @@ const createEmptyFloor = (floorId: number, width: number = 12, height: number = 
 const createEmptyMap = (): MapData => ({
   version: '1.0',
   totalFloors: 1,
-  currentFloor: 1,
-  floors: [createEmptyFloor(1)]
+  currentFloor: 0,
+  floors: [createEmptyFloor(0)]
 });
 
 interface MapSliceState {
@@ -50,9 +50,9 @@ const mapSlice = createSlice({
       const cur = state.mapData.floors.find(f => f.floorId === state.mapData.currentFloor);
       const w = action.payload.width ?? cur?.mapWidth ?? 12;
       const h = action.payload.height ?? cur?.mapHeight ?? 12;
-      const newFloorId = state.mapData.totalFloors + 1;
+      const newFloorId = state.mapData.totalFloors;
       state.mapData.floors.push(createEmptyFloor(newFloorId, w, h));
-      state.mapData.totalFloors = newFloorId;
+      state.mapData.totalFloors = state.mapData.floors.length;
     },
     removeFloor: (state, action: PayloadAction<number>) => {
       const floors = state.mapData.floors;
@@ -73,15 +73,15 @@ const mapSlice = createSlice({
       }
 
       floors.forEach((f, i) => {
-        f.floorId = i + 1;
+        f.floorId = i;
       });
       state.mapData.totalFloors = floors.length;
-      state.mapData.currentFloor = newIdx + 1;
+      state.mapData.currentFloor = newIdx;
       state.selectedTileId = null;
       state.selectedGrid = null;
     },
     switchFloor: (state, action: PayloadAction<number>) => {
-      if (action.payload >= 1 && action.payload <= state.mapData.totalFloors) {
+      if (action.payload >= 0 && action.payload < state.mapData.totalFloors) {
         state.mapData.currentFloor = action.payload;
         state.selectedTileId = null;
         state.selectedGrid = null;

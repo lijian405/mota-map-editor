@@ -57,7 +57,7 @@ function defaultAction(type: StoryActionType): StoryAction {
     case 'removeTile':
       return { type: 'removeTile', pos: '1,1' };
     case 'changeFloor':
-      return { type: 'changeFloor', floor: 1, playerPos: undefined };
+      return { type: 'changeFloor', floor: 0, playerPos: undefined };
     case 'changePlayerState':
       return { type: 'changePlayerState', changes: { hp: 0, gold: 0 } };
     case 'giveItem':
@@ -297,14 +297,19 @@ function ActionTypeFields({
 
   if (t === 'changeFloor') {
     const playerPos = action.playerPos as StoryPos | undefined;
+    const toNumberOr = (v: unknown, fallback: number): number => {
+      if (v === null || v === undefined) return fallback;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    };
     return (
       <div>
         <div style={{ marginBottom: 4, color: '#999' }}>目标楼层 floor</div>
         <InputNumber
           style={{ width: '100%' }}
-          min={1}
-          value={typeof action.floor === 'number' ? action.floor : 1}
-          onChange={(v) => onPatch({ ...action, type: 'changeFloor', floor: Number(v) || 1 })}
+          min={0}
+          value={typeof action.floor === 'number' ? action.floor : 0}
+          onChange={(v) => onPatch({ ...action, type: 'changeFloor', floor: toNumberOr(v, 0) })}
         />
         <div style={{ marginTop: 8 }}>
           <div style={{ marginBottom: 4, color: '#999' }}>玩家位置 playerPos（可选；x,y 或数字）</div>

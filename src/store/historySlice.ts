@@ -11,7 +11,7 @@ interface HistoryState {
 const createEmptyMap = (): MapData => ({
   version: '1.0',
   totalFloors: 1,
-  currentFloor: 1,
+  currentFloor: 0,
   floors: []
 });
 

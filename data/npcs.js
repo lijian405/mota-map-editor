@@ -10,6 +10,10 @@ window.npcs = [
     //  商人
     {
         name: 'business',
+    },
+    //  公主
+    {
+        name: 'princess',
     }
 ];
 

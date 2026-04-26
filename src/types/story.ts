@@ -1,6 +1,11 @@
 /** 与 docs/剧情编辑器开发说明.md 对齐；额外字段用 Record 保留 */
 
-export type TriggerType = 'floor_enter' | 'tile_enter' | 'npc_interact' | 'monsters_defeated';
+export type TriggerType =
+  | 'floor_enter'
+  | 'tile_enter'
+  | 'npc_interact'
+  | 'monsters_defeated'
+  | 'all_airwalls_revealed';
 
 export interface TriggerFloorEnter {
   type: 'floor_enter';
@@ -30,11 +35,17 @@ export interface TriggerMonstersDefeated {
   monsterIds?: string[];
 }
 
+export interface TriggerAllAirwallsRevealed {
+  type: 'all_airwalls_revealed';
+  floor: number;
+}
+
 export type StoryTrigger =
   | TriggerFloorEnter
   | TriggerTileEnter
   | TriggerNpcInteract
-  | TriggerMonstersDefeated;
+  | TriggerMonstersDefeated
+  | TriggerAllAirwallsRevealed;
 
 export type ChatContentLine =
   | string

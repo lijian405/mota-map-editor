@@ -38,7 +38,7 @@ export const validateMap = (floors: Floor[]): ValidationResult => {
     const hasStairsUp = floor.stairs.up !== null;
     const hasStairsDown = floor.stairs.down !== null;
 
-    if (floor.floorId < floors.length && !hasStairsUp) {
+    if (floor.floorId < floors.length - 1 && !hasStairsUp) {
       warnings.push({
         type: 'warning',
         code: 'W002',
@@ -47,7 +47,7 @@ export const validateMap = (floors: Floor[]): ValidationResult => {
       });
     }
 
-    if (floor.floorId > 1 && !hasStairsDown) {
+    if (floor.floorId > 0 && !hasStairsDown) {
       warnings.push({
         type: 'warning',
         code: 'W003',

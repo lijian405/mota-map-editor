@@ -69,6 +69,13 @@ function validateTrigger(trigger: StoryTrigger | undefined, basePath: string, er
     if (trigger.match !== undefined && trigger.match !== 'all' && trigger.match !== 'any') {
       errors.push({ path: `${basePath}.trigger.match`, message: 'match 须为 all 或 any' });
     }
+  } else if (t === 'all_airwalls_revealed') {
+    if (typeof (trigger as { floor?: unknown }).floor !== 'number') {
+      errors.push({
+        path: `${basePath}.trigger.floor`,
+        message: 'all_airwalls_revealed 需要 floor'
+      });
+    }
   } else {
     errors.push({ path: `${basePath}.trigger.type`, message: `未知触发器类型: ${String(t)}` });
   }
@@ -320,6 +327,8 @@ export function summarizeTrigger(trigger: StoryTrigger | undefined): string {
         : `NPC ${trigger.npc}（任意层）`;
     case 'monsters_defeated':
       return `清怪 层${trigger.floor} (${(trigger.positions ?? trigger.tiles ?? []).length}格)`;
+    case 'all_airwalls_revealed':
+      return `隐形墙全触发 层${trigger.floor}`;
     default:
       return String((trigger as { type: string }).type);
   }

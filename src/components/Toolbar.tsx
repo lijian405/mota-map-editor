@@ -1,5 +1,5 @@
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { Button, Space, Dropdown, Slider, Tooltip, message, Upload, Popconfirm, Modal, Segmented } from 'antd';
+import { Button, Space, Slider, Tooltip, message, Upload, Popconfirm, Modal, Segmented, Select, InputNumber } from 'antd';
 import {
   PlusOutlined,
   MinusOutlined,
@@ -20,7 +20,6 @@ import {
 import { setZoom, toggleGrid, resetView, setPreviewOpen, setCopiedTile, setSelectedTileForPlacement, setWorkspace } from '../store/editorSlice';
 import { addFloor, removeFloor, switchFloor, setMapData, clearMap, undo, redo } from '../store/mapSlice';
 import { exportMapToJson, importMapFromJson } from '../utils/mapUtils';
-import type { MenuProps } from 'antd';
 import type { RcFile } from 'antd/es/upload';
 import { presetTiles } from '../data/presetTiles';
 import { useState } from 'react';
@@ -40,14 +39,10 @@ const Toolbar: React.FC = () => {
   const canUndo = pastLength > 0;
   const canRedo = futureLength > 0;
 
-  const floorItems: MenuProps['items'] = mapData.floors.map((floor: { floorId: number }) => ({
-    key: floor.floorId,
-    label: `第 ${floor.floorId} 层`
-  }));
-
-  const handleFloorChange: MenuProps['onClick'] = ({ key }) => {
-    dispatch(switchFloor(parseInt(key as string)));
-  };
+  const floorOptions = [...mapData.floors]
+    .map(f => f.floorId)
+    .sort((a, b) => a - b)
+    .map(id => ({ value: id, label: `第 ${id} 层` }));
 
   const handleAddFloor = () => {
     dispatch(addFloor({}));
@@ -155,9 +150,37 @@ const Toolbar: React.FC = () => {
               <Button icon={<RedoOutlined />} onClick={() => dispatch(redo())} disabled={!canRedo} />
             </Tooltip>
             <div style={{ width: 1, height: 24, background: '#333', margin: '0 8px' }} />
-            <Dropdown menu={{ items: floorItems, onClick: handleFloorChange }} trigger={['click']}>
-              <Button>第 {mapData.currentFloor} 层 ▾</Button>
-            </Dropdown>
+            <Select
+              value={mapData.currentFloor}
+              options={floorOptions}
+              onChange={(v) => dispatch(switchFloor(Number(v)))}
+              showSearch
+              optionFilterProp="label"
+              placeholder="选择楼层"
+              style={{ width: 140 }}
+              listHeight={320}
+              dropdownStyle={{ maxHeight: 360 }}
+              popupMatchSelectWidth={false}
+              filterOption={(input, option) =>
+                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase()) ||
+                String(option?.value ?? '').includes(input)
+              }
+            />
+            <InputNumber
+              size="middle"
+              min={0}
+              max={Math.max(0, mapData.totalFloors - 1)}
+              value={mapData.currentFloor}
+              onChange={(v) => {
+                if (v === null || v === undefined) return;
+                const n = Number(v);
+                if (!Number.isFinite(n)) return;
+                dispatch(switchFloor(n));
+              }}
+              style={{ width: 88 }}
+              controls={false}
+              changeOnWheel={false}
+            />
             <Tooltip title="添加楼层">
               <Button icon={<PlusOutlined />} onClick={handleAddFloor} />
             </Tooltip>

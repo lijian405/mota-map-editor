@@ -38,7 +38,8 @@ export const presetTiles: PresetTile[] = [
   { name: 'shenshengdun', type: 'shenshengdun', tileType: 'item', layer: 'object', src: '/images/items/shenshengdun.png' },
   { name: 'thief', type: 'thief', tileType: 'npc', layer: 'object', src: '/images/npc/thief.png' },
   { name: 'wise', type: 'wise', tileType: 'npc', layer: 'object', src: '/images/npc/wise.png' },
-  { name: 'business', type: 'business', tileType: 'npc', layer: 'object', src: '/images/npc/business.png' }
+  { name: 'business', type: 'business', tileType: 'npc', layer: 'object', src: '/images/npc/business.png' },
+  { name: 'princess', type: 'princess', tileType: 'npc', layer: 'object', src: '/images/npc/princess.png' }
 ];
 
 for (let i = 100; i < 133; i++) {

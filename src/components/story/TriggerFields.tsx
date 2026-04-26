@@ -5,19 +5,28 @@ const TRIGGER_TYPES: { value: TriggerType; label: string }[] = [
   { value: 'floor_enter', label: '进入楼层 (floor_enter)' },
   { value: 'tile_enter', label: '踩格 (tile_enter)' },
   { value: 'npc_interact', label: 'NPC 对话 (npc_interact)' },
-  { value: 'monsters_defeated', label: '击败怪物 (monsters_defeated)' }
+  { value: 'monsters_defeated', label: '击败怪物 (monsters_defeated)' },
+  { value: 'all_airwalls_revealed', label: '隐形墙全触发 (all_airwalls_revealed)' }
 ];
+
+function toNumberOr(v: unknown, fallback: number): number {
+  if (v === null || v === undefined) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
 
 function defaultTrigger(type: TriggerType): StoryTrigger {
   switch (type) {
     case 'floor_enter':
-      return { type: 'floor_enter', floor: 1 };
+      return { type: 'floor_enter', floor: 0 };
     case 'tile_enter':
-      return { type: 'tile_enter', floor: 1, tile: '1,1' };
+      return { type: 'tile_enter', floor: 0, tile: '1,1' };
     case 'npc_interact':
       return { type: 'npc_interact', npc: '1' };
     case 'monsters_defeated':
-      return { type: 'monsters_defeated', floor: 1, positions: ['1,1'], match: 'all' };
+      return { type: 'monsters_defeated', floor: 0, positions: ['1,1'], match: 'all' };
+    case 'all_airwalls_revealed':
+      return { type: 'all_airwalls_revealed', floor: 0 };
   }
 }
 
@@ -56,9 +65,9 @@ export default function TriggerFields({
           <div style={{ marginBottom: 4, color: '#999' }}>楼层 floor</div>
           <InputNumber
             style={{ width: '100%' }}
-            min={1}
+            min={0}
             value={value.floor}
-            onChange={(v) => onChange({ ...value, floor: Number(v) || 1 })}
+            onChange={(v) => onChange({ ...value, floor: toNumberOr(v, 0) })}
           />
         </div>
       )}
@@ -68,9 +77,9 @@ export default function TriggerFields({
             <div style={{ marginBottom: 4, color: '#999' }}>楼层 floor</div>
             <InputNumber
               style={{ width: '100%' }}
-              min={1}
+              min={0}
               value={value.floor}
-              onChange={(v) => onChange({ ...value, floor: Number(v) || 1 })}
+              onChange={(v) => onChange({ ...value, floor: toNumberOr(v, 0) })}
             />
           </div>
           <div>
@@ -113,7 +122,7 @@ export default function TriggerFields({
             <div style={{ marginBottom: 4, color: '#999' }}>限定楼层（可选）</div>
             <InputNumber
               style={{ width: '100%' }}
-              min={1}
+              min={0}
               placeholder="留空=任意层"
               value={value.floor}
               onChange={(v) =>
@@ -133,9 +142,9 @@ export default function TriggerFields({
             <div style={{ marginBottom: 4, color: '#999' }}>楼层 floor</div>
             <InputNumber
               style={{ width: '100%' }}
-              min={1}
+              min={0}
               value={value.floor}
-              onChange={(v) => onChange({ ...value, floor: Number(v) || 1 })}
+              onChange={(v) => onChange({ ...value, floor: toNumberOr(v, 0) })}
             />
           </div>
           <div>
@@ -176,6 +185,17 @@ export default function TriggerFields({
             />
           </div>
         </>
+      )}
+      {value.type === 'all_airwalls_revealed' && (
+        <div>
+          <div style={{ marginBottom: 4, color: '#999' }}>楼层 floor</div>
+          <InputNumber
+            style={{ width: '100%' }}
+            min={0}
+            value={value.floor}
+            onChange={(v) => onChange({ ...value, floor: toNumberOr(v, 0) })}
+          />
+        </div>
       )}
     </Space>
   );

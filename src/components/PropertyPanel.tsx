@@ -12,7 +12,7 @@ import {
 } from '../store/mapSlice';
 import { presetTiles, tileCategories } from '../data/presetTiles';
 import { tileKindFromPresetTileType } from '../utils/mapUtils';
-import type { Floor, Tile, PresetTile, TileType } from '../types';
+import type { Floor, Tile, PresetTile, TileType, FootprintOrigin } from '../types';
 
 /** 门瓦片 type → 消耗的钥匙（与 presetTiles 中黄门/蓝门等一致） */
 const DOOR_TILE_TO_KEY: Record<string, 'yellow' | 'blue' | 'red' | 'green'> = {
@@ -82,6 +82,35 @@ function presetOptionLabel(p: PresetTile): string {
   return p.name;
 }
 
+function stripFootprint(t: Tile): Tile {
+  const next = { ...t };
+  delete next.footprintW;
+  delete next.footprintH;
+  delete next.footprintOrigin;
+  return next;
+}
+
+function commitMonsterFootprint(
+  tile: Tile,
+  patch: Partial<Pick<Tile, 'footprintW' | 'footprintH' | 'footprintOrigin'>>
+): Tile {
+  const merged = { ...tile, ...patch };
+  const w = merged.footprintW ?? 1;
+  const h = merged.footprintH ?? 1;
+  const o: FootprintOrigin = merged.footprintOrigin ?? 'topleft';
+  const next = { ...merged };
+  if (w <= 1 && h <= 1 && o === 'topleft') {
+    delete next.footprintW;
+    delete next.footprintH;
+    delete next.footprintOrigin;
+  } else {
+    next.footprintW = Math.max(1, Math.floor(w));
+    next.footprintH = Math.max(1, Math.floor(h));
+    next.footprintOrigin = o;
+  }
+  return next;
+}
+
 const PropertyPanel: React.FC = () => {
   const dispatch = useAppDispatch();
   const mapData = useAppSelector(state => state.map.mapData);
@@ -101,21 +130,21 @@ const PropertyPanel: React.FC = () => {
       const { keyType: _removed, ...rest } = nextProperties;
       nextProperties = rest as typeof nextProperties;
     }
-    dispatch(
-      updateTile({
-        ...selectedTile,
-        type: preset ? tileKindFromPresetTileType(preset.tileType as TileType) : selectedTile.type,
-        name: preset ? preset.type : newPresetId,
-        ...(preset
-          ? {
-              tileType: preset.tileType as Tile['tileType'],
-              layer: preset.layer,
-              src: preset.src
-            }
-          : {}),
-        properties: nextProperties
-      })
-    );
+    const base: Tile = {
+      ...selectedTile,
+      type: preset ? tileKindFromPresetTileType(preset.tileType as TileType) : selectedTile.type,
+      name: preset ? preset.type : newPresetId,
+      ...(preset
+        ? {
+            tileType: preset.tileType as Tile['tileType'],
+            layer: preset.layer,
+            src: preset.src
+          }
+        : {}),
+      properties: nextProperties
+    };
+    const nextTile = preset?.tileType === 'monster' ? base : stripFootprint(base);
+    dispatch(updateTile(nextTile));
   };
 
   const handlePropertyChange = (key: string, value: unknown) => {
@@ -124,6 +153,11 @@ const PropertyPanel: React.FC = () => {
       ...selectedTile,
       properties: { ...selectedTile.properties, [key]: value }
     }));
+  };
+
+  const handleFootprintChange = (patch: Partial<Pick<Tile, 'footprintW' | 'footprintH' | 'footprintOrigin'>>) => {
+    if (!selectedTile || selectedTile.tileType !== 'monster') return;
+    dispatch(updateTile(commitMonsterFootprint(selectedTile, patch)));
   };
 
   const handleDeleteTile = () => {
@@ -254,6 +288,43 @@ const PropertyPanel: React.FC = () => {
                   onChange={(v) => handlePropertyChange('gold', v)}
                   min={0}
                   style={{ width: '100%' }}
+                />
+              </Form.Item>
+              <Divider style={{ margin: '12px 0', borderColor: '#333' }} />
+              <h4 style={{ color: '#fff', marginBottom: 8 }}>多格占地（脚印）</h4>
+              <p style={{ color: '#888', fontSize: 11, margin: '0 0 8px' }}>
+                与 map_data 一致：导出为 footprintW / footprintH / footprintOrigin；1×1 左上角可不写。
+              </p>
+              <Form.Item label="占地宽 footprintW">
+                <InputNumber
+                  value={selectedTile.footprintW ?? 1}
+                  onChange={(v) =>
+                    handleFootprintChange({ footprintW: v === null || v === undefined ? 1 : Number(v) })
+                  }
+                  min={1}
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+              <Form.Item label="占地高 footprintH">
+                <InputNumber
+                  value={selectedTile.footprintH ?? 1}
+                  onChange={(v) =>
+                    handleFootprintChange({ footprintH: v === null || v === undefined ? 1 : Number(v) })
+                  }
+                  min={1}
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+              <Form.Item label="原点 footprintOrigin">
+                <Select
+                  style={{ width: '100%' }}
+                  value={(selectedTile.footprintOrigin ?? 'topleft') as FootprintOrigin}
+                  onChange={(v) => handleFootprintChange({ footprintOrigin: v })}
+                  options={[
+                    { value: 'topleft', label: 'topleft（x,y 为左上角）' },
+                    { value: 'center', label: 'center（x,y 为心点格）' },
+                    { value: 'heart', label: 'heart（同 center）' }
+                  ]}
                 />
               </Form.Item>
             </>

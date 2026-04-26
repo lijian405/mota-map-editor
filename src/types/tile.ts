@@ -6,6 +6,9 @@ export type MonsterType = string;
 export type NpcType = 'thief' | 'wise' | 'business';
 export type DoorType = 'yellowgate' | 'bluegate' | 'redgate' | 'greengate';
 
+/** 多格占地原点：与 docs/addon.md / 运行时 map_data 一致 */
+export type FootprintOrigin = 'topleft' | 'center' | 'heart';
+
 export interface Tile {
   id: string;
   x: number;
@@ -21,6 +24,12 @@ export interface Tile {
   tileType: TileType;
   layer: 'terrain' | 'object' | 'event';
   src?: string;
+  /** 占地宽度（格），≥1；省略等价于 1 */
+  footprintW?: number;
+  /** 占地高度（格），≥1；省略等价于 1 */
+  footprintH?: number;
+  /** 省略或 topleft：x,y 为左上角格；center/heart：x,y 为心点格 */
+  footprintOrigin?: FootprintOrigin;
   properties: TileProperties;
 }
 

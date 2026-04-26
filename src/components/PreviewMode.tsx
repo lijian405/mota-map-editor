@@ -272,6 +272,11 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
     });
   }, [log]);
 
+  const tilesForPreview = useMemo(() => {
+    if (!previewFloor) return [];
+    return stripSyntheticFillTiles(previewFloor.tiles);
+  }, [previewFloor]);
+
   if (!previewFloor) return null;
 
   const { mapWidth, mapHeight } = previewFloor;
@@ -300,11 +305,6 @@ const PreviewMode: React.FC<PreviewModeProps> = ({ open, onClose }) => {
     }
     return cells;
   };
-
-  const tilesForPreview = useMemo(
-    () => stripSyntheticFillTiles(previewFloor.tiles),
-    [previewFloor.tiles]
-  );
 
   const renderTileSprites = () =>
     tilesForPreview.map((tile: Tile) => {

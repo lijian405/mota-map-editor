@@ -1,6 +1,32 @@
 import { saveAs } from 'file-saver';
-import { MapData, Tile, TileType } from '../types';
+import { MapData, Tile, TileType, FootprintOrigin } from '../types';
 import { presetTiles } from '../data/presetTiles';
+
+function parseFootprintFromRaw(raw: Record<string, unknown>): Partial<Pick<Tile, 'footprintW' | 'footprintH' | 'footprintOrigin'>> {
+  const w = raw['footprintW'] ?? raw['footprint_w'];
+  const h = raw['footprintH'] ?? raw['footprint_h'];
+  const o = raw['footprintOrigin'] ?? raw['footprint_origin'];
+  const out: Partial<Pick<Tile, 'footprintW' | 'footprintH' | 'footprintOrigin'>> = {};
+  const asPositiveInt = (v: unknown): number | undefined => {
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 1) return Math.max(1, Math.floor(v));
+    if (typeof v === 'string' && /^\d+$/.test(v.trim())) {
+      const n = parseInt(v.trim(), 10);
+      if (n >= 1) return n;
+    }
+    return undefined;
+  };
+  const fw = asPositiveInt(w);
+  const fh = asPositiveInt(h);
+  if (fw !== undefined) out.footprintW = fw;
+  if (fh !== undefined) out.footprintH = fh;
+  if (typeof o === 'string') {
+    const n = o.trim().toLowerCase();
+    if (n === 'topleft' || n === 'center' || n === 'heart') {
+      out.footprintOrigin = n as FootprintOrigin;
+    }
+  }
+  return out;
+}
 
 export const tileLayerFromTileType = (tileType: string): Tile['layer'] =>
   tileType === 'terrain' ? 'terrain' : 'object';
@@ -31,6 +57,7 @@ function normalizeTileRaw(raw: Tile): Tile {
   const y = Number(raw.y);
   const id = typeof raw.id === 'string' ? raw.id : `tile_${x}_${y}`;
   const properties = raw.properties && typeof raw.properties === 'object' ? raw.properties : {};
+  const footprint = parseFootprintFromRaw(raw as unknown as Record<string, unknown>);
 
   let nameField = typeof raw.name === 'string' ? raw.name : '';
   if (nameField === 'greenGate') nameField = 'greengate';
@@ -67,6 +94,7 @@ function normalizeTileRaw(raw: Tile): Tile {
         tileType,
         layer: inferTileLayer({ layer: raw.layer, tileType }),
         src: raw.src,
+        ...footprint,
         properties
       };
     }
@@ -83,6 +111,7 @@ function normalizeTileRaw(raw: Tile): Tile {
       tileType,
       layer: inferTileLayer({ layer: raw.layer, tileType }),
       src: raw.src,
+      ...footprint,
       properties
     };
   }
@@ -97,6 +126,7 @@ function normalizeTileRaw(raw: Tile): Tile {
     tileType,
     layer: inferTileLayer({ layer: raw.layer, tileType }),
     src: raw.src ?? preset.src,
+    ...footprint,
     properties
   };
 }
@@ -179,9 +209,9 @@ export const downloadSampleMap = (): void => {
   const sampleMap: MapData = {
     version: '1.0',
     totalFloors: 1,
-    currentFloor: 1,
+    currentFloor: 0,
     floors: [{
-      floorId: 1,
+      floorId: 0,
       mapWidth: 20,
       mapHeight: 15,
       playerStart: { x: 2, y: 2, hp: 1000, attack: 10, defense: 10, gold: 0, yellowKeys: 1, blueKeys: 0, redKeys: 0 },
