@@ -104,9 +104,57 @@ function validateAction(
   switch (type) {
     case 'chat': {
       const content = action.content;
-      if (!Array.isArray(content)) {
-        errors.push({ path: `${p}.content`, message: 'chat 需要 content 数组' });
+      if (typeof content === 'string') {
+        if (!content.trim()) {
+          errors.push({ path: `${p}.content`, message: 'chat.content 不能为空字符串' });
+        }
+        break;
       }
+      if (!Array.isArray(content)) {
+        errors.push({ path: `${p}.content`, message: 'chat 需要 content（字符串或数组）' });
+        break;
+      }
+      content.forEach((line, li) => {
+        const lp = `${p}.content[${li}]`;
+        if (typeof line === 'string') return;
+        if (!line || typeof line !== 'object' || Array.isArray(line)) {
+          errors.push({ path: lp, message: 'content 元素须为字符串或对象' });
+          return;
+        }
+        const obj = line as Record<string, unknown>;
+        if (obj.name !== undefined && typeof obj.name !== 'string') {
+          errors.push({ path: `${lp}.name`, message: 'name 若填写须为字符串' });
+        }
+        if (obj.content !== undefined) {
+          if (typeof obj.content !== 'string' && !(Array.isArray(obj.content) && obj.content.every(x => typeof x === 'string'))) {
+            errors.push({ path: `${lp}.content`, message: 'content 须为字符串或字符串数组' });
+          }
+        }
+        if (obj.choices !== undefined) {
+          if (!Array.isArray(obj.choices)) {
+            errors.push({ path: `${lp}.choices`, message: 'choices 须为数组' });
+            return;
+          }
+          obj.choices.forEach((c, ci) => {
+            const cp = `${lp}.choices[${ci}]`;
+            if (!c || typeof c !== 'object' || Array.isArray(c)) {
+              errors.push({ path: cp, message: 'choice 须为对象' });
+              return;
+            }
+            const choice = c as Record<string, unknown>;
+            if (typeof choice.label !== 'string' || !choice.label.trim()) {
+              errors.push({ path: `${cp}.label`, message: 'label 不能为空' });
+            }
+            if (!Array.isArray(choice.actions)) {
+              errors.push({ path: `${cp}.actions`, message: 'actions 须为数组' });
+              return;
+            }
+            choice.actions.forEach((subAct, si) => {
+              validateAction(subAct as Record<string, unknown>, si, `${cp}`, errors, ctx);
+            });
+          });
+        }
+      });
       break;
     }
     case 'playSound': {

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button, Card, Input, InputNumber, Select, Space, Typography } from 'antd';
+import { useEffect, useState } from 'react';
+import { Button, Card, Collapse, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -93,8 +93,25 @@ export default function ActionFields({
   appearPickHint,
   highlightedActionIndex = null
 }: ActionFieldsProps) {
+  const [openKey, setOpenKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOpenKey(prev => {
+      const max = actions.length;
+      if (highlightedActionIndex !== null) {
+        const hk = String(highlightedActionIndex);
+        return Number(hk) >= 0 && Number(hk) < max ? hk : null;
+      }
+      if (prev === null) return null;
+      const n = Number(prev);
+      return Number.isInteger(n) && n >= 0 && n < max ? prev : null;
+    });
+  }, [actions.length, highlightedActionIndex]);
+
   const addAction = () => {
-    onChange([...actions, defaultAction('chat')]);
+    const next = [...actions, defaultAction('chat')];
+    setOpenKey(String(next.length - 1));
+    onChange(next);
   };
 
   const patch = (i: number, next: StoryAction) => {
@@ -120,67 +137,86 @@ export default function ActionFields({
       <Button type="dashed" icon={<PlusOutlined />} onClick={addAction} block>
         添加动作
       </Button>
-      {actions.map((act, i) => (
-        <Card
-          id={`story-action-${i}`}
-          key={i}
-          size="small"
-          title={`动作 #${i + 1}`}
-          style={
-            highlightedActionIndex === i
-              ? { borderColor: '#1890ff', boxShadow: '0 0 0 1px rgba(24,144,255,0.5)' }
-              : undefined
-          }
-          extra={
-            <Space>
-              <Button type="text" size="small" icon={<ArrowUpOutlined />} onClick={() => move(i, -1)} disabled={i === 0} />
-              <Button
-                type="text"
-                size="small"
-                icon={<ArrowDownOutlined />}
-                onClick={() => move(i, 1)}
-                disabled={i === actions.length - 1}
-              />
-              <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => remove(i)} />
-            </Space>
-          }
-        >
-          <Space direction="vertical" style={{ width: '100%' }} size="small">
-            <div>
-              <div style={{ marginBottom: 4, color: '#999' }}>类型</div>
-              <Select
-                style={{ width: '100%' }}
-                value={act.type as StoryActionType}
-                options={ACTION_OPTIONS.map(o => ({
-                  value: o.value,
-                  label: o.label,
-                  disabled: false
-                }))}
-                onChange={(v) => patch(i, stripForNewType(act, v as StoryActionType))}
-              />
-            </div>
-            {isPlaceholderActionType(String(act.type)) && (
-              <Text type="warning">此动作类型运行时暂无逻辑，仅保留 JSON。</Text>
-            )}
-            <div>
-              <div style={{ marginBottom: 4, color: '#999' }}>delay（毫秒，可选）</div>
-              <InputNumber
-                style={{ width: '100%' }}
-                min={0}
-                value={act.delay}
-                onChange={(v) => patch(i, { ...act, delay: v === null ? undefined : Number(v) })}
-              />
-            </div>
-            <ActionTypeFields
-              action={act}
-              actionIndex={i}
-              onPatch={(next) => patch(i, next)}
-              onPickAppearEntityPos={onPickAppearEntityPos}
-              appearPickHint={appearPickHint}
-            />
-          </Space>
-        </Card>
-      ))}
+      <Collapse
+        accordion
+        activeKey={openKey ?? undefined}
+        onChange={(k) => setOpenKey(k === undefined ? null : String(k))}
+        items={actions.map((act, i) => {
+          const key = String(i);
+          const highlighted = highlightedActionIndex === i;
+          return {
+            key,
+            style: highlighted ? { border: '1px solid rgba(24,144,255,0.7)' } : undefined,
+            label: (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+                <div style={{ flex: '0 0 auto' }}>{`动作 #${i + 1}`}</div>
+                <div style={{ flex: '1 1 auto' }} />
+                <Space size={4} onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ArrowUpOutlined />}
+                    onClick={() => move(i, -1)}
+                    disabled={i === 0}
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ArrowDownOutlined />}
+                    onClick={() => move(i, 1)}
+                    disabled={i === actions.length - 1}
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => remove(i)}
+                  />
+                </Space>
+              </div>
+            ),
+            children: (
+              <div id={`story-action-${i}`}>
+                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                  <div>
+                    <div style={{ marginBottom: 4, color: '#999' }}>类型</div>
+                    <Select
+                      style={{ width: '100%' }}
+                      value={act.type as StoryActionType}
+                      options={ACTION_OPTIONS.map(o => ({
+                        value: o.value,
+                        label: o.label,
+                        disabled: false
+                      }))}
+                      onChange={(v) => patch(i, stripForNewType(act, v as StoryActionType))}
+                    />
+                  </div>
+                  {isPlaceholderActionType(String(act.type)) && (
+                    <Text type="warning">此动作类型运行时暂无逻辑，仅保留 JSON。</Text>
+                  )}
+                  <div>
+                    <div style={{ marginBottom: 4, color: '#999' }}>delay（毫秒，可选）</div>
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      min={0}
+                      value={act.delay}
+                      onChange={(v) => patch(i, { ...act, delay: v === null ? undefined : Number(v) })}
+                    />
+                  </div>
+                  <ActionTypeFields
+                    action={act}
+                    actionIndex={i}
+                    onPatch={(next) => patch(i, next)}
+                    onPickAppearEntityPos={onPickAppearEntityPos}
+                    appearPickHint={appearPickHint}
+                  />
+                </Space>
+              </div>
+            )
+          };
+        })}
+      />
     </Space>
   );
 }
@@ -200,9 +236,12 @@ function ActionTypeFields({
 }) {
   const t = action.type;
   if (t === 'chat') {
-    const lines = (Array.isArray(action.content) ? action.content : []) as ChatContentLine[];
+    const raw = action.content as unknown;
+    const lines = (Array.isArray(raw) ? raw : typeof raw === 'string' ? [raw] : []) as ChatContentLine[];
     const setLines = (next: ChatContentLine[]) => {
-      onPatch({ ...action, type: 'chat', content: next });
+      // 兼容：若原始为字符串且仍是单句纯字符串，则保持为字符串；否则用数组
+      const keepString = typeof raw === 'string' && next.length === 1 && typeof next[0] === 'string';
+      onPatch({ ...action, type: 'chat', content: keepString ? (next[0] as string) : next });
     };
     const addLine = () => setLines([...lines, { name: '', content: '' }]);
     const setLine = (idx: number, patch: Record<string, unknown>) => {
@@ -218,6 +257,60 @@ function ActionTypeFields({
       setLines(next);
     };
     const removeLine = (idx: number) => setLines(lines.filter((_, j) => j !== idx));
+    const setLineKind = (idx: number, kind: 'string' | 'object') => {
+      const cur = lines[idx];
+      const next = [...lines];
+      if (kind === 'string') {
+        if (typeof cur === 'string') return;
+        const c = (cur as { content?: unknown }).content;
+        const s = Array.isArray(c) ? c.join('\n') : String(c ?? '');
+        next[idx] = s;
+      } else {
+        if (typeof cur !== 'string') return;
+        next[idx] = { name: '', content: cur };
+      }
+      setLines(next);
+    };
+    const setChoicesEnabled = (idx: number, enabled: boolean) => {
+      const cur = lines[idx];
+      if (!cur || typeof cur === 'string') return;
+      if (enabled) {
+        const choices = Array.isArray((cur as { choices?: unknown }).choices)
+          ? ((cur as { choices?: unknown }).choices as unknown[])
+          : [];
+        if (choices.length > 0) return;
+        setLine(idx, { choices: [{ label: '是', actions: [] }, { label: '否', actions: [] }] });
+      } else {
+        setLine(idx, { choices: undefined });
+      }
+    };
+    const patchChoice = (
+      lineIdx: number,
+      choiceIdx: number,
+      nextChoice: { label: string; actions: StoryAction[] }
+    ) => {
+      const cur = lines[lineIdx];
+      if (!cur || typeof cur === 'string') return;
+      const rawChoices = (cur as { choices?: unknown }).choices;
+      const choices = Array.isArray(rawChoices) ? (rawChoices as { label: string; actions: StoryAction[] }[]) : [];
+      const next = [...choices];
+      next[choiceIdx] = nextChoice;
+      setLine(lineIdx, { choices: next });
+    };
+    const addChoice = (lineIdx: number) => {
+      const cur = lines[lineIdx];
+      if (!cur || typeof cur === 'string') return;
+      const rawChoices = (cur as { choices?: unknown }).choices;
+      const choices = Array.isArray(rawChoices) ? (rawChoices as { label: string; actions: StoryAction[] }[]) : [];
+      setLine(lineIdx, { choices: [...choices, { label: '选项', actions: [] }] });
+    };
+    const removeChoice = (lineIdx: number, choiceIdx: number) => {
+      const cur = lines[lineIdx];
+      if (!cur || typeof cur === 'string') return;
+      const rawChoices = (cur as { choices?: unknown }).choices;
+      const choices = Array.isArray(rawChoices) ? (rawChoices as { label: string; actions: StoryAction[] }[]) : [];
+      setLine(lineIdx, { choices: choices.filter((_, i) => i !== choiceIdx) });
+    };
 
     return (
       <Space direction="vertical" style={{ width: '100%' }}>
@@ -226,8 +319,30 @@ function ActionTypeFields({
         </Button>
         {lines.map((line, idx) => (
           <Card key={idx} size="small" type="inner" title={`第 ${idx + 1} 句`} extra={<Button type="link" danger size="small" onClick={() => removeLine(idx)}>删除</Button>}>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ color: '#999', fontSize: 12 }}>格式</div>
+              <Select
+                style={{ width: '100%' }}
+                value={typeof line === 'string' ? 'string' : 'object'}
+                options={[
+                  { value: 'object', label: '对象（name + content，可带 choices）' },
+                  { value: 'string', label: '字符串（无 name）' }
+                ]}
+                onChange={(v) => setLineKind(idx, v as 'string' | 'object')}
+              />
+            </div>
+
             {typeof line === 'string' ? (
-              <Input.TextArea rows={2} value={line} onChange={(e) => setLine(idx, { content: e.target.value })} />
+              <Input.TextArea
+                rows={2}
+                value={line}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const next = [...lines];
+                  next[idx] = v;
+                  setLines(next);
+                }}
+              />
             ) : (
               <>
                 <div style={{ marginBottom: 8 }}>
@@ -237,14 +352,66 @@ function ActionTypeFields({
                     onChange={(e) => setLine(idx, { name: e.target.value })}
                   />
                 </div>
-                <div>
-                  <div style={{ color: '#999', fontSize: 12 }}>内容 content</div>
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ color: '#999', fontSize: 12 }}>内容 content（支持多行；多行会存为数组）</div>
                   <Input.TextArea
                     rows={3}
                     value={Array.isArray(line.content) ? line.content.join('\n') : String(line.content ?? '')}
-                    onChange={(e) => setLine(idx, { content: e.target.value })}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      const hasNl = text.includes('\n');
+                      const content = hasNl ? text.split('\n') : text;
+                      setLine(idx, { content });
+                    }}
                   />
                 </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <span style={{ color: '#999', fontSize: 12 }}>choices（可选）</span>
+                  <Switch
+                    checked={
+                      Array.isArray((line as { choices?: unknown }).choices) &&
+                      ((line as { choices?: unknown }).choices as unknown[]).length > 0
+                    }
+                    onChange={(v) => setChoicesEnabled(idx, v)}
+                  />
+                  <Button
+                    size="small"
+                    disabled={!Array.isArray((line as { choices?: unknown }).choices)}
+                    onClick={() => addChoice(idx)}
+                  >
+                    添加选项
+                  </Button>
+                </div>
+
+                {Array.isArray((line as { choices?: unknown }).choices) &&
+                  ((line as { choices?: unknown }).choices as { label: string; actions: StoryAction[] }[]).map((c, ci) => (
+                    <Card
+                      key={ci}
+                      size="small"
+                      type="inner"
+                      style={{ marginBottom: 8 }}
+                      title={`选项 ${ci + 1}`}
+                      extra={<Button type="link" danger size="small" onClick={() => removeChoice(idx, ci)}>删除</Button>}
+                    >
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ color: '#999', fontSize: 12 }}>label</div>
+                        <Input
+                          value={String(c.label ?? '')}
+                          onChange={(e) => patchChoice(idx, ci, { ...c, label: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <div style={{ color: '#999', fontSize: 12, marginBottom: 4 }}>actions</div>
+                        <ActionFields
+                          actions={Array.isArray(c.actions) ? c.actions : []}
+                          onChange={(acts) => patchChoice(idx, ci, { ...c, actions: acts })}
+                          onPickAppearEntityPos={onPickAppearEntityPos}
+                          appearPickHint={appearPickHint}
+                        />
+                      </div>
+                    </Card>
+                  ))}
               </>
             )}
           </Card>
