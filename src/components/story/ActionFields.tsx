@@ -7,6 +7,7 @@ import {
   PlusOutlined
 } from '@ant-design/icons';
 import { presetTiles } from '../../data/presetTiles';
+import { GIVE_ITEM_PROP_OPTIONS } from '../../data/propsGiveItemOptions';
 import type {
   AppearEntity,
   ChatContentLine,
@@ -520,19 +521,44 @@ function ActionTypeFields({
 
   if (t === 'giveItem') {
     const raw = (action.items ?? action.itemIds ?? []) as unknown[];
-    const text = raw.map(x => String(x)).join(', ');
+    const selected = raw.map(x => String(x)).filter(Boolean);
+    const knownKeys = new Set(GIVE_ITEM_PROP_OPTIONS.map(o => o.value));
+    const fallbackOptions = selected
+      .filter(k => !knownKeys.has(k))
+      .map(k => ({ value: k, label: `${k}（未在 props.json）` }));
+
     return (
       <div>
-        <div style={{ marginBottom: 4, color: '#999' }}>items（逗号分隔，对应 prop 名）</div>
-        <Input
-          value={text}
-          onChange={(e) => {
-            const items = e.target.value
-              .split(',')
-              .map(s => s.trim())
-              .filter(Boolean);
-            onPatch({ ...action, type: 'giveItem', items, itemIds: undefined });
+        <div style={{ marginBottom: 4, color: '#999' }}>
+          items（多选；选项展示为「中文名 (spriteId)」，导出仍为 prop 键以兼容 grant_item_by_name）
+        </div>
+        <Select
+          mode="multiple"
+          allowClear
+          showSearch
+          placeholder="搜索名称或 spriteId…"
+          style={{ width: '100%' }}
+          maxTagCount="responsive"
+          value={selected}
+          options={[
+            ...GIVE_ITEM_PROP_OPTIONS.map(o => ({ value: o.value, label: o.label })),
+            ...fallbackOptions
+          ]}
+          optionFilterProp="label"
+          filterOption={(input, option) => {
+            const q = input.toLowerCase();
+            const label = String(option?.label ?? '').toLowerCase();
+            const val = String(option?.value ?? '').toLowerCase();
+            return label.includes(q) || val.includes(q);
           }}
+          onChange={(vals) =>
+            onPatch({
+              ...action,
+              type: 'giveItem',
+              items: (vals as string[]).filter(Boolean),
+              itemIds: undefined
+            })
+          }
         />
       </div>
     );
